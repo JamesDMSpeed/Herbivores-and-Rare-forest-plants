@@ -82,10 +82,6 @@ summary(as.factor(odVascdata$species))
 summary(as.factor(odMossdata$species))
 summary(as.factor(odLichendata$species))
 
-#Clip to remove points outside of Norway
-#Polygon of 1km buffer around Norway
-#norway1km<-readOGR('S:\\DISENTANGLE\\WP2\\norway1km','norway1km')
-
 #Convert to SPDF
 mossspdf<-SpatialPointsDataFrame(cbind(odMossdata$decimalLongitude,odMossdata$decimalLatitude),as.data.frame(odMossdata),proj4string = crs(norway))
 lichenspdf<-SpatialPointsDataFrame(cbind(odLichendata$decimalLongitude,odLichendata$decimalLatitude),as.data.frame(odLichendata),proj4string = crs(norway))
@@ -98,4 +94,42 @@ vasc_utm<-spTransform(vascspdf,crs(norwayP))
 plot(norwayP)
 points(vasc_utm,pch=16,cex=0.1)
 
+
+# Clipping to Norway outline bufferd --------------------------------------
+
+#Clip to remove points outside of Norway
+#Polygon of 1km buffer around Norway
+library(rgeos)
+norway1km<-gBuffer(norwayP, width=1000)
+#plot(norway1km)
+#plot(norwayP,add=T)
+
+#Clip
+lichen_clip<-lichen_utm[which(!is.na(over(lichen_utm,norway1km))),]
+moss_clip<-moss_utm[which(!is.na(over(moss_utm,norway1km))),]
+vasc_clip<-vasc_utm[which(!is.na(over(vasc_utm,norway1km))),]
+plot(norwayP)
+points(lichen_utm,pch=16,col=2)
+points(lichen_clip,pch=16,col=3)
+plot(norwayP)
+points(moss_utm,pch=16,col=2)
+points(moss_clip,pch=16,col=3)
+plot(norwayP)
+points(vasc_utm,pch=16,col=2)
+points(vasc_clip,pch=16,col=3)
+
+AllForestRedList<-rbind(lichen_clip,moss_clip,vasc_clip)
+AllForestRedList$PlantGroup<-c(rep('Lichen',times=nrow(lichen_clip)),rep('Bryophyte',times=nrow(moss_clip)),rep('Vascular',times=nrow(vasc_clip)))
+plot(norwayP)
+points(AllForestRedList[AllForestRedList$PlantGroup=='Lichen',])
+
+#Merge with red list details
+match(AllForestRedList$species,redlistsp_all$Vitenskapelig.navn)
+ForestRedList_adb<-merge(AllForestRedList,redlistsp_all,by.x='species',by.y='Vitenskapelig.navn',all.x=T)
+
+write.table(lichen_clip,'Lichens_forest_redlisted_herbivory.csv')
+write.table(moss_clip,'Moss_forest_redlisted_herbivory.csv')
+write.table(vasc_clip,'Vascular_forest_redlisted_herbivory.csv')
+
+fwrite(ForestRedList_adb@data,file='RedListedForestSpeciesNorwayBeite.csv')
 
