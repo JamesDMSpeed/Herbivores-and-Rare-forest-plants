@@ -140,83 +140,119 @@ fwrite(ForestRedList_adb@data,file='RedListedForestSpeciesNorwayBeite.csv')
 
 # Environmental data ------------------------------------------------------
 
+
 #Elevation
 Norelev<-getData('alt',country='NOR')
 plot(Norelev)
-#Climate
-Norbioclim<-getData('worldclim',var='bio',res=0.5,lon=5,lat=60)
-Norbioclim1<-getData('worldclim',var='bio',res=0.5,lon=5,lat=70)
-Norbioclim2<-getData('worldclim',var='bio',res=0.5,lon=40,lat=70)
-plot(Norbioclim[[1]])
-plot(Norbioclim1[[1]])
-mergclim<-merge(Norbioclim,Norbioclim1)
-mergclim1<-merge(mergclim,Norbioclim2)
-cropclim<-crop(mergclim1,Norelev)
-Norclimdat<-mask(cropclim,Norelev)
-plot(Norclimdat[[1]])
 
-NorClimElev<-stack(Norclimdat,Norelev)
-names(NorClimElev)<-c(names(Norbioclim),names(Norelev))
-writeRaster(NorClimElev,'NorClimElev')
+# #Climate
+# Norbioclim<-getData('worldclim',var='bio',res=0.5,lon=5,lat=60)
+# Norbioclim1<-getData('worldclim',var='bio',res=0.5,lon=5,lat=70)
+# Norbioclim2<-getData('worldclim',var='bio',res=0.5,lon=40,lat=70)
+# plot(Norbioclim[[1]])
+# plot(Norbioclim1[[1]])
+# mergclim<-merge(Norbioclim,Norbioclim1)
+# mergclim1<-merge(mergclim,Norbioclim2)
+# cropclim<-crop(mergclim1,Norelev)
+# Norclimdat<-mask(cropclim,Norelev)
+# plot(Norclimdat[[1]])
+# 
+# NorClimElev<-stack(Norclimdat,Norelev)
+# names(NorClimElev)<-c(names(Norbioclim),names(Norelev))
+# writeRaster(NorClimElev,'NorClimElev')
+# 
+# 
+# NorClimElev<-stack('NorClimElev')
+# NorClimElev
+#  
+# 
+# #Land cover data
+# landcover<-stack('landcoverstack')
+# 
+# 
+# #Climate and elevation in same stack
+# NorClimElev_utm<-projectRaster(NorClimElev,landcover[[1]],method='bilinear')
+# 
+# #Soil data
+# soilph<-raster('geonode_phihox_m_sl2_250m.tif')
+# soilph_utm<-projectRaster(soilph,landcover[[1]],method='bilinear')
+# Norsoilph<-mask(crop(soilph_utm,landcover[[1]]),landcover[[1]])
+# plot(Norsoilph)
+# 
+# #Herbivore data
+# herbdat<-readOGR('KommuneMetabolicBiomass')
+# herbdat1<-spTransform(herbdat,crs(landcover))
+# moose1949<-rasterize(herbdat1,field='moose.1949',landcover[[1]])
+# moose1959<-rasterize(herbdat1,field='moose.1959',landcover[[1]])
+# moose1969<-rasterize(herbdat1,field='moose.1969',landcover[[1]])
+# moose1979<-rasterize(herbdat1,field='moose.1979',landcover[[1]])
+# moose1989<-rasterize(herbdat1,field='moose.1989',landcover[[1]])
+# moose1999<-rasterize(herbdat1,field='moose.1999',landcover[[1]])
+# moose2009<-rasterize(herbdat1,field='moose.2009',landcover[[1]])
+# moose2015<-rasterize(herbdat1,field='moose.2015',landcover[[1]])
+# moosestack<-stack(moose1949,moose1959,moose1969,moose1979,moose1989,moose1999,moose2009,moose2015)
+# names(moosestack)<-c('moose1949','moose1959','moose1969','moose1979','moose1989','moose1999','moose2009','moose2015')
+# writeRaster(moosestack,'Moose_metbio',overwrite=T)
+# 
+# red_deer1949<-rasterize(herbdat1,field='red_deer.1949',landcover[[1]])
+# red_deer1959<-rasterize(herbdat1,field='red_deer.1959',landcover[[1]])
+# red_deer1969<-rasterize(herbdat1,field='red_deer.1969',landcover[[1]])
+# red_deer1979<-rasterize(herbdat1,field='red_deer.1979',landcover[[1]])
+# red_deer1989<-rasterize(herbdat1,field='red_deer.1989',landcover[[1]])
+# red_deer1999<-rasterize(herbdat1,field='red_deer.1999',landcover[[1]])
+# red_deer2009<-rasterize(herbdat1,field='red_deer.2009',landcover[[1]])
+# red_deer2015<-rasterize(herbdat1,field='red_deer.2015',landcover[[1]])
+# red_deerstack<-stack(red_deer1949,red_deer1959,red_deer1969,red_deer1979,red_deer1989,red_deer1999,red_deer2009,red_deer2015)
+# names(red_deerstack)<-c('red_deer1949','red_deer1959','red_deer1969','red_deer1979','red_deer1989','red_deer1999','red_deer2009','red_deer2015')
+# writeRaster(red_deerstack,'red_deer_metbio',overwrite=T)
+# 
+# roe_deer1949<-rasterize(herbdat1,field='roe_deer.1949',landcover[[1]])
+# roe_deer1959<-rasterize(herbdat1,field='roe_deer.1959',landcover[[1]])
+# roe_deer1969<-rasterize(herbdat1,field='roe_deer.1969',landcover[[1]])
+# roe_deer1979<-rasterize(herbdat1,field='roe_deer.1979',landcover[[1]])
+# roe_deer1989<-rasterize(herbdat1,field='roe_deer.1989',landcover[[1]])
+# roe_deer1999<-rasterize(herbdat1,field='roe_deer.1999',landcover[[1]])
+# roe_deer2009<-rasterize(herbdat1,field='roe_deer.2009',landcover[[1]])
+# roe_deer2015<-rasterize(herbdat1,field='roe_deer.2015',landcover[[1]])
+# roe_deerstack<-stack(roe_deer1949,roe_deer1959,roe_deer1969,roe_deer1979,roe_deer1989,roe_deer1999,roe_deer2009,roe_deer2015)
+# names(roe_deerstack)<-c('roe_deer1949','roe_deer1959','roe_deer1969','roe_deer1979','roe_deer1989','roe_deer1999','roe_deer2009','roe_deer2015')
+# writeRaster(roe_deerstack,'roe_deer_metbio',overwrite=T)
+# 
+# #Stack together
+# PredVars<-stack(NorClimElev_utm,landcover,Norsoilph,moosestack,red_deerstack,roe_deerstack)
+# writeRaster(PredVars,'PredictorVariables',overwrite=T)
 
-NorClimElev<-stack(NorClimElev)
-NorClimElev
 
-#Land cover data
-landcover<-stack('landcover')
-
-#Climate and elevation in same stack
-NorClimElev_utm<-projectRaster(NorClimElev,landcover[[1]],method='bilinear')
-
-#Soil data
-soilph<-raster('geonode_phihox_m_sl2_250m.tif')
-soilph_utm<-projectRaster(soilph,landcover[[1]],method='bilinear')
-Norsoilph<-mask(crop(soilph_utm,landcover[[1]]),landcover[[1]])
-plot(Norsoilph)
-
-#Herbivore data
-herbdat<-readOGR('KommuneMetabolicBiomass')
-herbdat1<-spTransform(herbdat,crs(landcover))
-moose1949<-rasterize(herbdat1,field='moose.1949',landcover[[1]])
-moose1959<-rasterize(herbdat1,field='moose.1959',landcover[[1]])
-moose1969<-rasterize(herbdat1,field='moose.1969',landcover[[1]])
-moose1979<-rasterize(herbdat1,field='moose.1979',landcover[[1]])
-moose1989<-rasterize(herbdat1,field='moose.1989',landcover[[1]])
-moose1999<-rasterize(herbdat1,field='moose.1999',landcover[[1]])
-moose2009<-rasterize(herbdat1,field='moose.2009',landcover[[1]])
-moose2015<-rasterize(herbdat1,field='moose.2015',landcover[[1]])
-moosestack<-stack(moose1949,moose1959,moose1969,moose1979,moose1989,moose1999,moose2009,moose2015)
-names(moosestack)<-c('moose1949','moose1959','moose1969','moose1979','moose1989','moose1999','moose2009','moose2015')
-writeRaster(moosestack,'Moose_metbio')
-
-red_deer1949<-rasterize(herbdat1,field='red_deer.1949',landcover[[1]])
-red_deer1959<-rasterize(herbdat1,field='red_deer.1959',landcover[[1]])
-red_deer1969<-rasterize(herbdat1,field='red_deer.1969',landcover[[1]])
-red_deer1979<-rasterize(herbdat1,field='red_deer.1979',landcover[[1]])
-red_deer1989<-rasterize(herbdat1,field='red_deer.1989',landcover[[1]])
-red_deer1999<-rasterize(herbdat1,field='red_deer.1999',landcover[[1]])
-red_deer2009<-rasterize(herbdat1,field='red_deer.2009',landcover[[1]])
-red_deer2015<-rasterize(herbdat1,field='red_deer.2015',landcover[[1]])
-red_deerstack<-stack(red_deer1949,red_deer1959,red_deer1969,red_deer1979,red_deer1989,red_deer1999,red_deer2009,red_deer2015)
-names(red_deerstack)<-c('red_deer1949','red_deer1959','red_deer1969','red_deer1979','red_deer1989','red_deer1999','red_deer2009','red_deer2015')
-writeRaster(red_deerstack,'red_deer_metbio')
-
-roe_deer1949<-rasterize(herbdat1,field='roe_deer.1949',landcover[[1]])
-roe_deer1959<-rasterize(herbdat1,field='roe_deer.1959',landcover[[1]])
-roe_deer1969<-rasterize(herbdat1,field='roe_deer.1969',landcover[[1]])
-roe_deer1979<-rasterize(herbdat1,field='roe_deer.1979',landcover[[1]])
-roe_deer1989<-rasterize(herbdat1,field='roe_deer.1989',landcover[[1]])
-roe_deer1999<-rasterize(herbdat1,field='roe_deer.1999',landcover[[1]])
-roe_deer2009<-rasterize(herbdat1,field='roe_deer.2009',landcover[[1]])
-roe_deer2015<-rasterize(herbdat1,field='roe_deer.2015',landcover[[1]])
-roe_deerstack<-stack(roe_deer1949,roe_deer1959,roe_deer1969,roe_deer1979,roe_deer1989,roe_deer1999,roe_deer2009,roe_deer2015)
-names(roe_deerstack)<-c('roe_deer1949','roe_deer1959','roe_deer1969','roe_deer1979','roe_deer1989','roe_deer1999','roe_deer2009','roe_deer2015')
-writeRaster(roe_deerstack,'roe_deer_metbio')
-
-#Stack together
-PredVars<-stack(NorClimElev_utm,landcover,Norsoilph,moosestack,red_deerstack,roe_deerstack)
-writeRaster(PredVars,'PredictorVariables')
+# Setup -------------------------------------------------------------------
 
 
+PredVars<-stack('PredictorVariables')
+names(PredVars)[21:26]<-c('Land_Cover',"Land_Use",'Forest_Productivity','Forest_Type','Vegetation_Type','SoilpH')
+
+
+#Ratify land cover
+PredVars$Land_Cover<-ratify(PredVars$Land_Cover)
+ratlc<- levels(PredVars$Land_Cover)[[1]]
+ratlc[["Land_Cover"]] <- c("Built up","Agricultural","Forest","Natural vegetation","Mires","Glaciers/Ice/Snow","Freshwater")
+levels(PredVars$Land_Cover)<-ratlc
+levelplot(PredVars$Land_Cover)
+
+#Ratify forest productivty
+PredVars$Forest_Productivity[PredVars$Forest_Productivity>18]<-NA
+PredVars$Forest_Productivity<-ratify(PredVars$Forest_Productivity)
+ratlcp<-levels(PredVars$Forest_Productivity)[[1]]
+ratlcp[['Forest_Productivity']]<-c('Unproductive','Low','Medium','High')
+levels(PredVars$Forest_Productivity)<-ratlcp
+levelplot(PredVars$Forest_Productivity)
+pairs(PredVars)
+
+#Ratify forest type
+PredVars$ForestType[PredVars$ForestType>33]<-NA
+PredVars$ForestType<-ratify(PredVars$ForestType)
+ratlct<-levels(PredVars$ForestType)[[1]]
+ratlct
+ratlct[['ForestType']]<-c('Coniferous','Deciduous','Mixed')
+levels(PredVars$ForestType)<-ratlct
+levelplot(PredVars$ForestType)
 
 
