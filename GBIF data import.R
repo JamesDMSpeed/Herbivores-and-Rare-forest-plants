@@ -227,32 +227,137 @@ plot(Norelev)
 
 
 PredVars<-stack('PredictorVariables')
-names(PredVars)[21:26]<-c('Land_Cover',"Land_Use",'Forest_Productivity','Forest_Type','Vegetation_Type','SoilpH')
+names(PredVars)[20:25]<-c('Elevation','Land_Cover','Forest_Type','Forest_Productivity','Vegetation_Type','SoilpH')
 
 
+#Convert to factor variables
 #Ratify land cover
 PredVars$Land_Cover<-ratify(PredVars$Land_Cover)
 ratlc<- levels(PredVars$Land_Cover)[[1]]
-ratlc[["Land_Cover"]] <- c("Built up","Agricultural","Forest","Natural vegetation","Mires","Glaciers/Ice/Snow","Freshwater")
+ratlc[["Land_Cover"]] <- c("Built-up","Agricultural","Forest","Open-natural vegetation","Mires","Glaciers/Ice/Snow","Freshwater","Sea","NA")
 levels(PredVars$Land_Cover)<-ratlc
 levelplot(PredVars$Land_Cover)
 
 #Ratify forest productivty
-PredVars$Forest_Productivity[PredVars$Forest_Productivity>18]<-NA
+PredVars$Forest_Productivity[PredVars$Forest_Productivity>18]<-NA #Class 99 ikke registrert. Gjelder skogområder som ligger utenfor AR5 kartleggingsområder
 PredVars$Forest_Productivity<-ratify(PredVars$Forest_Productivity)
 ratlcp<-levels(PredVars$Forest_Productivity)[[1]]
 ratlcp[['Forest_Productivity']]<-c('Unproductive','Low','Medium','High')
 levels(PredVars$Forest_Productivity)<-ratlcp
 levelplot(PredVars$Forest_Productivity)
-pairs(PredVars)
 
 #Ratify forest type
-PredVars$ForestType[PredVars$ForestType>33]<-NA
-PredVars$ForestType<-ratify(PredVars$ForestType)
-ratlct<-levels(PredVars$ForestType)[[1]]
+PredVars$Forest_Type[PredVars$Forest_Type>33]<-NA #	99 Ikke registrert. Gjelder skogområder som ligger utenfor AR5 kartleggingsområder
+PredVars$Forest_Type<-ratify(PredVars$Forest_Type)
+ratlct<-levels(PredVars$Forest_Type)[[1]]
 ratlct
 ratlct[['ForestType']]<-c('Coniferous','Deciduous','Mixed')
-levels(PredVars$ForestType)<-ratlct
-levelplot(PredVars$ForestType)
+levels(PredVars$Forest_Type)<-ratlct
+levelplot(PredVars$Forest_Type)
 
+
+
+#Correlation plots
+pairs(PredVars)
+
+
+#Reimport Species data
+redlistforest<-fread('RedListedForestSpeciesNorwayBeite.csv')
+
+#Convert to spdf
+rlforsp<-SpatialPointsDataFrame(cbind(redlistforest$decimalLongitude,redlistforest$decimalLatitude),redlistforest,proj4string = crs(norway))
+rlforsp_utm<-spTransform(rlforsp,crs(norwayP))
+
+plot(norwayP)
+points(rlforsp_utm[rlforsp_utm$PlantGroup.x=='Vascular',],col='green',pch=16,cex=0.2)
+points(rlforsp_utm[rlforsp_utm$PlantGroup.x=='Lichen',],col='brown',pch=16,cex=0.2)
+points(rlforsp_utm[rlforsp_utm$PlantGroup.x=='Bryophyte',],col='blue',pch=16,cex=0.2)
+
+#Select points only with good geographic precision (coordinateuncertainty <1415m (sqrt(1000^2+1000^2)))
+rlfor_use<-rlforsp_utm[!is.na(rlforsp_utm$coordinateUncertaintyInMeters) & rlforsp_utm$coordinateUncertaintyInMeters<=1415,]
+
+#Select points Only in forest land-cover
+extforest<-extract(PredVars$Land_Cover,rlfor_use)
+extforest[is.na(extforest)]<-0
+forestonly<-rlfor_use[extforest==30,]
+
+spforocc<-with(forestonly@data,tapply(species,species,length))
+spforocc
+hist(spforocc)
+
+#Plot all species
+col<-colorRampPalette('white')
+#Make a raster to plot
+noralt<-getData('alt',country='NOR')
+nornull<-crop(projectRaster(noralt,crs=crs(norwayP)),norwayP)
+values(nornull)<-0
+levelplot(nornull,margin=F,colorkey=F
+          ,col.regions=col,main='Red listed forest species', xlab=NULL, ylab=NULL, scales=list(draw=FALSE))+
+  layer(sp.polygons(norwayP))+
+  layer(sp.points(forestonly[forestonly$PlantGroup.x=='Vascular',],pch=16,cex=0.2,col='green'))+
+  layer(sp.points(forestonly[forestonly$PlantGroup.x=='Lichen',],pch=16,cex=0.2,col='blue'))+
+  layer(sp.points(forestonly[forestonly$PlantGroup.x=='Bryophyte',],pch=16,cex=0.2,col='tan4'))
+
+
+# Plot species ------------------------------------------------------------
+#Lichens
+lichen_use<-forestonly[forestonly$PlantGroup.x=='Lichen',]
+p<-list()
+for(i in 1:length(levels(as.factor(lichen_use$species)))){
+  p[[i]]<-levelplot(nornull,margin=F,colorkey=F,col.regions=col, xlab=NULL, ylab=NULL, scales=list(draw=FALSE)
+                    ,main=list(label=levels(as.factor(lichen_use$species))[i],cex=0.7,fontface=3))+
+    layer(sp.polygons(norwayP))+
+    layer(sp.points(lichen_use[lichen_use$species==levels(as.factor(lichen_use$species))[i],],pch=16,cex=0.5))
+}
+
+#Make locations to plot (28 lichen species)
+rowi<-c(rep(1:5,times=6))
+coli<-c(rep(1:6,each=5))
+tiff(width=210,height=297,units='mm',res=300,'Lichen_distributions.tif')
+lattice.options(  layout.heights=list(bottom.padding=list(x=0), top.padding=list(x=0)),
+                  layout.widths=list(left.padding=list(x=0), right.padding=list(x=0)))
+for (i in 1:length(p)){
+  print(p[[i]],split=c(rowi[i],coli[i],5,6),more=T)}
+dev.off()
+
+#Mosses
+moss_use<-forestonly[forestonly$PlantGroup.x=='Bryophyte',]
+m<-list()
+for(i in 1:length(levels(as.factor(moss_use$species)))){
+  m[[i]]<-levelplot(nornull,margin=F,colorkey=F,col.regions=col, xlab=NULL, ylab=NULL, scales=list(draw=FALSE)
+                    ,main=list(label=levels(as.factor(moss_use$species))[i],cex=0.7,fontface=3))+
+    layer(sp.polygons(norwayP))+
+    layer(sp.points(moss_use[moss_use$species==levels(as.factor(moss_use$species))[i],],pch=16,cex=0.5))
+}
+
+#Make locations to plot (5 moss species)
+rowi<-c(rep(1:5,times=1))
+coli<-c(rep(1,each=5))
+tiff(width=210,height=60,units='mm',res=300,'Bryophyte_distributions.tif')
+lattice.options(  layout.heights=list(bottom.padding=list(x=0), top.padding=list(x=0)),
+                  layout.widths=list(left.padding=list(x=0), right.padding=list(x=0)))
+for (i in 1:length(m)){
+  print(m[[i]],split=c(rowi[i],1,5,1),more=T)}
+dev.off()
+
+
+#Vascular
+vasc_use<-forestonly[forestonly$PlantGroup.x=='Vascular',]
+v<-list()
+for(i in 1:length(levels(as.factor(vasc_use$species)))){
+  v[[i]]<-levelplot(nornull,margin=F,colorkey=F,col.regions=col, xlab=NULL, ylab=NULL, scales=list(draw=FALSE)
+                    ,main=list(label=levels(as.factor(vasc_use$species))[i],cex=0.7,fontface=3))+
+    layer(sp.polygons(norwayP))+
+    layer(sp.points(vasc_use[vasc_use$species==levels(as.factor(vasc_use$species))[i],],pch=16,cex=0.5))
+}
+
+#Make locations to plot (31 vasc species)
+rowi<-c(rep(1:5,times=7))
+coli<-c(rep(1:7,each=5))
+tiff(width=210,height=297,units='mm',res=150,'Vascular distributions.tif')
+lattice.options(  layout.heights=list(bottom.padding=list(x=0), top.padding=list(x=0)),
+                  layout.widths=list(left.padding=list(x=0), right.padding=list(x=0)))
+for (i in 1:length(v)){
+  print(v[[i]],split=c(rowi[i],coli[i],5,7),more=T)}
+dev.off()
 
