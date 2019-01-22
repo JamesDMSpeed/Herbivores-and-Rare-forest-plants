@@ -1,141 +1,143 @@
 #Forest RedList species
-require(rgbif)
-require(raster)
-require(data.table)
-require(rasterVis)
-require(dismo)
+require(rgbif)#Spatial data
+require(raster)#Spatial data
+require(rgdal)#Spatial data
+require(sp)#Spatial data
+require(data.table)#Reading in big tables
+require(rasterVis)#Visualising spatial data
+require(dismo)#Distribution modelling
+require(ENMeval)#Tuning maxent
 
 #Norway polygon
 norway<-raster::getData('GADM', country='NOR', level=0)
 norwayP<-spTransform(norway,"+proj=utm +zone=32")
 plot(norwayP)
 
-# #Redlist -----------------------------------------------------------------
-# #Make species lists with those linked to grazing changes
-# #Data from Artsdatabanken Rødlist 2015. All redlisted spp, påvirkning factor: changed habitat use
-# #Only species (not subspecies)
-# #Filter by 'beite' 
-vasc<-read.table('Rodlista2015_vascplant.csv'
-                  ,header=T,sep=";",fileEncoding="UTF-16LE")
- 
-herbvasc<-droplevels(vasc[grep('*beit*',vasc$Påvirkningsfaktorer,ignore.case=T),])
-dim(herbvasc)
-herbvasc$Vitenskapelig.navn
-
-moss<-read.table('Rodlista2015_mosses.csv'
-                 ,header=T,sep=";",fileEncoding="UTF-16LE")
-
-herbmoss<-droplevels(moss[grep('*beit*',moss$Påvirkningsfaktorer,ignore.case=T),])
-dim(herbmoss)
-herbmoss$Vitenskapelig.navn
-
-lichen<-read.table('Rodlista2015_lichens.csv'
-                 ,header=T,sep=";",fileEncoding="UTF-16LE")
-
-herblichen<-droplevels(lichen[grep('*beit*',lichen$Påvirkningsfaktorer,ignore.case=T),])
-dim(herblichen)
-herblichen$Vitenskapelig.navn
-
-
-redlistsp_all<-rbind(vasc,moss,lichen)
-redlistsp_all$PlantGroup<-c(rep('Vascular',times=nrow(vasc)),rep('Bryphyte',times=nrow(moss)),rep('Lichen',times=nrow(lichen)))
-
-View(redlistsp_all)
-
-
-# GBIF import -------------------------------------------------------------
-
-#Keyed download with doi linkk
-keysL<-sapply(as.character(herblichen$Vitenskapelig.navn),function(x) name_backbone(x,rank='species')$speciesKey)
-paste(keysL,collapse=',')#Copy and paste to below
-odLichen<-occ_download('taxonKey = 2609133,2607387,3408876,2603661,2602561,2609349,3422592,3433876,2601243,2608140,5260765,7083298,2605872,7425899,5260770,9198278,5258394,8704544,3397573,3429282,3390552,2609409,2609180,5260761,2607725,8335421,5260565,2599762,3429909,3389602'
-                       ,'country = NO','hasCoordinate = TRUE',
-                       user='jamesspeed',pwd='*****',email='*****')
-occ_download_meta(odLichen)
-gbif_citation(occ_download_meta(odLichen))# GBIF Occurrence Download https://doi.org/10.15468/dl.pl144i Accessed from R via rgbif (https://github.com/ropensci/rgbif) on 2018-11-26"
-
-keysM<-sapply(as.character(herbmoss$Vitenskapelig.navn),function(x) name_backbone(x,rank='species')$speciesKey)
-paste(keysM,collapse=',')
-odMoss<-occ_download('taxonKey = 5280585,4276928,5283214,7800507,2689413'
-                       ,'country = NO','hasCoordinate = TRUE',
-                       user='jamesspeed',pwd='*****',email='*****')
-occ_download_meta(odMoss)
-gbif_citation(occ_download_meta(odMoss))# "GBIF Occurrence Download https://doi.org/10.15468/dl.ydfbtt Accessed from R via rgbif (https://github.com/ropensci/rgbif) on 2018-11-26"
-
-keysV<-sapply(as.character(herbvasc$Vitenskapelig.navn),function(x) name_backbone(x,rank='species')$speciesKey)
-paste(keysV,collapse=',')
-odVasc<-occ_download('taxonKey = 9139754,8558004,2704845,3025813,7931051,2792588,9020552,5405976,2849252,8231647,3001509,8917443,2820517,3012376,2975152,8277403,3033129,5361866,5284517,8869754,7270427,5410857,8915737,2926086,5409958,2787993,3111049,9177060,2927078,3012509,2926055,7660935,2914396,2975380,2925944'
-                     ,'country = NO','hasCoordinate = TRUE',
-                     user='jamesspeed',pwd='*****',email='*****')
-occ_download_meta(odVasc)
-gbif_citation(occ_download_meta(odVasc))# "GBIF Occurrence Download https://doi.org/10.15468/dl.7eqijw Accessed from R via rgbif (https://github.com/ropensci/rgbif) on 2018-11-26"
-
-odLichdat<-occ_download_get(odLichen,overwrite=T)
-odMossdat<-occ_download_get(odMoss,overwrite=T)
-odVascdat<-occ_download_get(odVasc,overwrite=T)
-
-odLichendata<-occ_download_import(odLichdat)
-odMossdata<-occ_download_import(odMossdat)
-odVascdata<-occ_download_import(odVascdat)
-
-summary(as.factor(odVascdata$species))
-summary(as.factor(odMossdata$species))
-summary(as.factor(odLichendata$species))
-
-#Convert to SPDF
-mossspdf<-SpatialPointsDataFrame(cbind(odMossdata$decimalLongitude,odMossdata$decimalLatitude),as.data.frame(odMossdata),proj4string = crs(norway))
-lichenspdf<-SpatialPointsDataFrame(cbind(odLichendata$decimalLongitude,odLichendata$decimalLatitude),as.data.frame(odLichendata),proj4string = crs(norway))
-vascspdf<-SpatialPointsDataFrame(cbind(odVascdata$decimalLongitude,odVascdata$decimalLatitude),as.data.frame(odVascdata),proj4string = crs(norway))
-
-moss_utm<-spTransform(mossspdf,crs(norwayP))
-lichen_utm<-spTransform(lichenspdf,crs(norwayP))
-vasc_utm<-spTransform(vascspdf,crs(norwayP))
-
-plot(norwayP)
-points(vasc_utm,pch=16,cex=0.1)
-
-
-# Clipping to Norway outline bufferd --------------------------------------
-
-#Clip to remove points outside of Norway
-#Polygon of 1km buffer around Norway
-library(rgeos)
-norway1km<-gBuffer(norwayP, width=1000)
-#plot(norway1km)
-#plot(norwayP,add=T)
-
-#Clip
-lichen_clip<-lichen_utm[which(!is.na(over(lichen_utm,norway1km))),]
-moss_clip<-moss_utm[which(!is.na(over(moss_utm,norway1km))),]
-vasc_clip<-vasc_utm[which(!is.na(over(vasc_utm,norway1km))),]
-plot(norwayP)
-points(lichen_utm,pch=16,col=2)
-points(lichen_clip,pch=16,col=3)
-plot(norwayP)
-points(moss_utm,pch=16,col=2)
-points(moss_clip,pch=16,col=3)
-plot(norwayP)
-points(vasc_utm,pch=16,col=2)
-points(vasc_clip,pch=16,col=3)
-
-AllForestRedList<-rbind(lichen_clip,moss_clip,vasc_clip)
-AllForestRedList$PlantGroup<-c(rep('Lichen',times=nrow(lichen_clip)),rep('Bryophyte',times=nrow(moss_clip)),rep('Vascular',times=nrow(vasc_clip)))
-plot(norwayP)
-points(AllForestRedList[AllForestRedList$PlantGroup=='Lichen',])
-
-#Merge with red list details
-match(AllForestRedList$species,redlistsp_all$Vitenskapelig.navn)
-ForestRedList_adb<-merge(AllForestRedList,redlistsp_all,by.x='species',by.y='Vitenskapelig.navn',all.x=T)
-
-
-# Final spp data ----------------------------------------------------------
-
-write.table(lichen_clip,'Lichens_forest_redlisted_herbivory.csv')
-write.table(moss_clip,'Moss_forest_redlisted_herbivory.csv')
-write.table(vasc_clip,'Vascular_forest_redlisted_herbivory.csv')
-
-fwrite(ForestRedList_adb@data,file='RedListedForestSpeciesNorwayBeite.csv')
-
+# # #Redlist -----------------------------------------------------------------
+# # #Make species lists with those linked to grazing changes
+# # #Data from Artsdatabanken Rødlist 2015. All redlisted spp, påvirkning factor: changed habitat use
+# # #Only species (not subspecies)
+# # #Filter by 'beite' 
+# vasc<-read.table('Rodlista2015_vascplant.csv'
+#                   ,header=T,sep=";",fileEncoding="UTF-16LE")
+#  
+# herbvasc<-droplevels(vasc[grep('*beit*',vasc$Påvirkningsfaktorer,ignore.case=T),])
+# dim(herbvasc)
+# herbvasc$Vitenskapelig.navn
+# 
+# moss<-read.table('Rodlista2015_mosses.csv'
+#                  ,header=T,sep=";",fileEncoding="UTF-16LE")
+# 
+# herbmoss<-droplevels(moss[grep('*beit*',moss$Påvirkningsfaktorer,ignore.case=T),])
+# dim(herbmoss)
+# herbmoss$Vitenskapelig.navn
+# 
+# lichen<-read.table('Rodlista2015_lichens.csv'
+#                  ,header=T,sep=";",fileEncoding="UTF-16LE")
+# 
+# herblichen<-droplevels(lichen[grep('*beit*',lichen$Påvirkningsfaktorer,ignore.case=T),])
+# dim(herblichen)
+# herblichen$Vitenskapelig.navn
+# 
+# 
+# redlistsp_all<-rbind(vasc,moss,lichen)
+# redlistsp_all$PlantGroup<-c(rep('Vascular',times=nrow(vasc)),rep('Bryphyte',times=nrow(moss)),rep('Lichen',times=nrow(lichen)))
+# 
+# View(redlistsp_all)
+# 
+# 
+# # GBIF import -------------------------------------------------------------
+# 
+# #Keyed download with doi linkk
+# keysL<-sapply(as.character(herblichen$Vitenskapelig.navn),function(x) name_backbone(x,rank='species')$speciesKey)
+# paste(keysL,collapse=',')#Copy and paste to below
+# odLichen<-occ_download('taxonKey = 2609133,2607387,3408876,2603661,2602561,2609349,3422592,3433876,2601243,2608140,5260765,7083298,2605872,7425899,5260770,9198278,5258394,8704544,3397573,3429282,3390552,2609409,2609180,5260761,2607725,8335421,5260565,2599762,3429909,3389602'
+#                        ,'country = NO','hasCoordinate = TRUE',
+#                        user='jamesspeed',pwd='*****',email='*****')
+# occ_download_meta(odLichen)
+# gbif_citation(occ_download_meta(odLichen))# GBIF Occurrence Download https://doi.org/10.15468/dl.pl144i Accessed from R via rgbif (https://github.com/ropensci/rgbif) on 2018-11-26"
+# 
+# keysM<-sapply(as.character(herbmoss$Vitenskapelig.navn),function(x) name_backbone(x,rank='species')$speciesKey)
+# paste(keysM,collapse=',')
+# odMoss<-occ_download('taxonKey = 5280585,4276928,5283214,7800507,2689413'
+#                        ,'country = NO','hasCoordinate = TRUE',
+#                        user='jamesspeed',pwd='*****',email='*****')
+# occ_download_meta(odMoss)
+# gbif_citation(occ_download_meta(odMoss))# "GBIF Occurrence Download https://doi.org/10.15468/dl.ydfbtt Accessed from R via rgbif (https://github.com/ropensci/rgbif) on 2018-11-26"
+# 
+# keysV<-sapply(as.character(herbvasc$Vitenskapelig.navn),function(x) name_backbone(x,rank='species')$speciesKey)
+# paste(keysV,collapse=',')
+# odVasc<-occ_download('taxonKey = 9139754,8558004,2704845,3025813,7931051,2792588,9020552,5405976,2849252,8231647,3001509,8917443,2820517,3012376,2975152,8277403,3033129,5361866,5284517,8869754,7270427,5410857,8915737,2926086,5409958,2787993,3111049,9177060,2927078,3012509,2926055,7660935,2914396,2975380,2925944'
+#                      ,'country = NO','hasCoordinate = TRUE',
+#                      user='jamesspeed',pwd='*****',email='*****')
+# occ_download_meta(odVasc)
+# gbif_citation(occ_download_meta(odVasc))# "GBIF Occurrence Download https://doi.org/10.15468/dl.7eqijw Accessed from R via rgbif (https://github.com/ropensci/rgbif) on 2018-11-26"
+# 
+# odLichdat<-occ_download_get(odLichen,overwrite=T)
+# odMossdat<-occ_download_get(odMoss,overwrite=T)
+# odVascdat<-occ_download_get(odVasc,overwrite=T)
+# 
+# odLichendata<-occ_download_import(odLichdat)
+# odMossdata<-occ_download_import(odMossdat)
+# odVascdata<-occ_download_import(odVascdat)
+# 
+# summary(as.factor(odVascdata$species))
+# summary(as.factor(odMossdata$species))
+# summary(as.factor(odLichendata$species))
+# 
+# #Convert to SPDF
+# mossspdf<-SpatialPointsDataFrame(cbind(odMossdata$decimalLongitude,odMossdata$decimalLatitude),as.data.frame(odMossdata),proj4string = crs(norway))
+# lichenspdf<-SpatialPointsDataFrame(cbind(odLichendata$decimalLongitude,odLichendata$decimalLatitude),as.data.frame(odLichendata),proj4string = crs(norway))
+# vascspdf<-SpatialPointsDataFrame(cbind(odVascdata$decimalLongitude,odVascdata$decimalLatitude),as.data.frame(odVascdata),proj4string = crs(norway))
+# 
+# moss_utm<-spTransform(mossspdf,crs(norwayP))
+# lichen_utm<-spTransform(lichenspdf,crs(norwayP))
+# vasc_utm<-spTransform(vascspdf,crs(norwayP))
+# 
+# plot(norwayP)
+# points(vasc_utm,pch=16,cex=0.1)
+# 
+# 
+# # Clipping to Norway outline bufferd --------------------------------------
+# 
+# #Clip to remove points outside of Norway
+# #Polygon of 1km buffer around Norway
+# library(rgeos)
+# norway1km<-gBuffer(norwayP, width=1000)
+# #plot(norway1km)
+# #plot(norwayP,add=T)
+# 
+# #Clip
+# lichen_clip<-lichen_utm[which(!is.na(over(lichen_utm,norway1km))),]
+# moss_clip<-moss_utm[which(!is.na(over(moss_utm,norway1km))),]
+# vasc_clip<-vasc_utm[which(!is.na(over(vasc_utm,norway1km))),]
+# plot(norwayP)
+# points(lichen_utm,pch=16,col=2)
+# points(lichen_clip,pch=16,col=3)
+# plot(norwayP)
+# points(moss_utm,pch=16,col=2)
+# points(moss_clip,pch=16,col=3)
+# plot(norwayP)
+# points(vasc_utm,pch=16,col=2)
+# points(vasc_clip,pch=16,col=3)
+# 
+# AllForestRedList<-rbind(lichen_clip,moss_clip,vasc_clip)
+# AllForestRedList$PlantGroup<-c(rep('Lichen',times=nrow(lichen_clip)),rep('Bryophyte',times=nrow(moss_clip)),rep('Vascular',times=nrow(vasc_clip)))
+# plot(norwayP)
+# points(AllForestRedList[AllForestRedList$PlantGroup=='Lichen',])
+# 
+# #Merge with red list details
+# match(AllForestRedList$species,redlistsp_all$Vitenskapelig.navn)
+# ForestRedList_adb<-merge(AllForestRedList,redlistsp_all,by.x='species',by.y='Vitenskapelig.navn',all.x=T)
+# 
+# 
+# # Final spp data ----------------------------------------------------------
+# 
+# write.table(lichen_clip,'Lichens_forest_redlisted_herbivory.csv')
+# write.table(moss_clip,'Moss_forest_redlisted_herbivory.csv')
+# write.table(vasc_clip,'Vascular_forest_redlisted_herbivory.csv')
+# 
+# fwrite(ForestRedList_adb@data,file='RedListedForestSpeciesNorwayBeite.csv')
 
 
 # Environmental data ------------------------------------------------------
@@ -281,9 +283,13 @@ extforest<-extract(PredVars$Land_Cover,rlfor_use)
 extforest[is.na(extforest)]<-0
 forestonly<-rlfor_use[extforest==30,]
 
+#Points per species
 spforocc<-with(forestonly@data,tapply(species,species,length))
 spforocc
 hist(spforocc)
+
+#Points per higher taxa
+tapply(forestonly$PlantGroup.x,forestonly$PlantGroup.x,length)
 
 #Plot all species
 col<-colorRampPalette('white')
@@ -296,7 +302,7 @@ levelplot(nornull,margin=F,colorkey=F
   layer(sp.polygons(norwayP))+
   layer(sp.points(forestonly[forestonly$PlantGroup.x=='Vascular',],pch=16,cex=0.2,col='green'))+
   layer(sp.points(forestonly[forestonly$PlantGroup.x=='Lichen',],pch=16,cex=0.2,col='blue'))+
-  layer(sp.points(forestonly[forestonly$PlantGroup.x=='Bryophyte',],pch=16,cex=0.2,col='tan4'))
+  layer(sp.points(forestonly[forestonly$PlantGroup.x=='Bryophyte',],pch=16,cex=0.5,col='tan4'))
 
 
 # Plot species ------------------------------------------------------------
@@ -361,3 +367,27 @@ for (i in 1:length(v)){
   print(v[[i]],split=c(rowi[i],coli[i],5,7),more=T)}
 dev.off()
 
+
+# Distribution modelling --------------------------------------------------
+
+#Background data
+background<-read.table('BackgroundBiasCorrected.txt',header=T)#Vascular plants bias file used for Speed & Austrheim et al. 2017
+backsp<-SpatialPoints(background,proj4string = crs(norwayP))
+plot(norwayP)
+points(backsp,cex=0.1,pch=16)
+
+#MaxEnt Tuning
+tuneparameters<-ENMevaluate(occ=forestonly@coords[forestonly$species==levels(as.factor(forestonly$species))[[1]],],
+                            env=PredVars[[c(10,12,15,33,41,49,22,23)]],
+                            categoricals=c("Forest_Type","Forest_Productivity"),
+                            method="block",
+                            bg.coords=backsp)
+tuneparameters@results[which.min(tuneparameters@results$AICc),]
+
+#MaxEnt modelling
+me1<-maxent(p=forestonly@coords[forestonly$species==levels(as.factor(forestonly$species))[[1]],],
+            x=PredVars[[c(10,12,15,33,41,49,22,23)]],
+            factors=c("Forest_Type","Forest_Productivity"),
+            a=backsp,
+            args=c('betamultiplier=2.0','threshold=TRUE','product=TRUE',"-P","-J"))
+me1
