@@ -278,8 +278,11 @@ points(rlforsp_utm[rlforsp_utm$PlantGroup.x=='Bryophyte',],col='blue',pch=16,cex
 #Select points only with good geographic precision (coordinateuncertainty <1415m (sqrt(1000^2+1000^2)))
 rlfor_use<-rlforsp_utm[!is.na(rlforsp_utm$coordinateUncertaintyInMeters) & rlforsp_utm$coordinateUncertaintyInMeters<=1415,]
 
+#Mask out points outside of Norway coverage (worldclim data)
+rlfor_useNor<-rlfor_use[!is.na(extract(PredVars[[10]],rlfor_use)),]
+
 #Select points Only in forest land-cover
-extforest<-extract(PredVars$Land_Cover,rlfor_use)
+extforest<-extract(PredVars$Land_Cover,rlfor_useNor)
 extforest[is.na(extforest)]<-0
 forestonly<-rlfor_use[extforest==30,]
 
@@ -287,6 +290,25 @@ forestonly<-rlfor_use[extforest==30,]
 spforocc<-with(forestonly@data,tapply(species,species,length))
 spforocc
 hist(spforocc)
+
+#Only in forest with productivity
+extforestprod<-extract(PredVars$Forest_Productivity,forestonly)
+extforestprod[is.na(extforestprod)]<-0
+forestprodonly<-forestonly[extforestprod>0,]
+#Only in forest with forest type too
+extforestprodtype<-extract(PredVars$Forest_Type,forestprodonly)
+extforestprodtype[is.na(extforestprodtype)]<-0
+forestprodonlytype<-forestprodonly[extforestprodtype>0,]
+
+#Points per species - prod
+spforprodocc<-with(forestprodonly@data,tapply(species,species,length))
+spforprodocc
+hist(spforprodocc)
+
+#Points per species - prodand type
+spforprodtypeocc<-with(forestprodonlytype@data,tapply(species,species,length))
+spforprodtypeocc
+hist(spforprodtypeocc)
 
 #Points per higher taxa
 tapply(forestonly$PlantGroup.x,forestonly$PlantGroup.x,length)
@@ -369,6 +391,8 @@ dev.off()
 
 
 # Distribution modelling --------------------------------------------------
+#Currently only points with forest productivity and type data 
+
 
 #Background data
 background<-read.table('BackgroundBiasCorrected.txt',header=T)#Vascular plants bias file used for Speed & Austrheim et al. 2017
@@ -376,18 +400,83 @@ backsp<-SpatialPoints(background,proj4string = crs(norwayP))
 plot(norwayP)
 points(backsp,cex=0.1,pch=16)
 
-#MaxEnt Tuning
-tuneparameters<-ENMevaluate(occ=forestonly@coords[forestonly$species==levels(as.factor(forestonly$species))[[1]],],
-                            env=PredVars[[c(10,12,15,33,41,49,22,23)]],
+#Background in forest
+backforestext<-extract(PredVars$Land_Cover,backsp)
+backforestext[is.na(backforestext)]<-0
+backforest<-backsp[backforestext==30,]
+  
+#MaxEnt Tuning ####
+#Always allow linear features
+
+args_sp<-list()
+for(i in 1:length(levels(as.factor(forestprodonlytype$species)))){
+  print(i)
+  print(levels(as.factor(forestprodonlytype$species))[[i]])
+  nrecs<-nrow(forestprodonlytype@coords[forestprodonlytype$species==levels(as.factor(forestprodonlytype$species))[[i]],])
+  print(nrecs)  
+  if(nrecs>=15){
+  tuneparameters<-ENMevaluate(occ=forestprodonlytype@coords[forestprodonlytype$species==levels(as.factor(forestprodonlytype$species))[[i]],],
+                            env=PredVars[[c(10,12,15,33,41,49,22:23)]],#Many NA values for forest type and productivity
+                            RMvalues = c(0.5,1,1.5,2,2.5,3,3.5,4,6,8), 
+                            fc = c("L", "LQ","LQH", "LQHP", "LQHPT"),
                             categoricals=c("Forest_Type","Forest_Productivity"),
                             method="block",
-                            bg.coords=backsp)
+                            bg.coords=backforest)
 tuneparameters@results[which.min(tuneparameters@results$AICc),]
 
-#MaxEnt modelling
-me1<-maxent(p=forestonly@coords[forestonly$species==levels(as.factor(forestonly$species))[[1]],],
-            x=PredVars[[c(10,12,15,33,41,49,22,23)]],
+b<-tuneparameters@results$rm[which.min(tuneparameters@results$AICc)]
+lin <-grepl('L',tuneparameters@results$features[which.min(tuneparameters@results$AICc)])
+quad<-grepl('Q',tuneparameters@results$features[which.min(tuneparameters@results$AICc)])
+prod<-grepl('P',tuneparameters@results$features[which.min(tuneparameters@results$AICc)])
+hing<-grepl('H',tuneparameters@results$features[which.min(tuneparameters@results$AICc)]) 
+thres<-grepl('T',tuneparameters@results$features[which.min(tuneparameters@results$AICc)])
+
+args_sp[[i]]<-as.character(c(paste0('betamultiplier=',b),
+                      paste0('linear=',lin),
+                      paste0('quadratic=',quad),
+                      paste0('product=',prod),
+                      paste0('hinge=',hing),
+                      paste0('threshold=',thres),
+                      "-P",
+                      "-J",
+                      'replicates=5'
+))}
+}
+names(args_sp)<-levels(as.factor(forestprodonlytype$species))
+#Write tuning as list
+saveRDS(args_sp,file='Tuning')
+listtun<-readRDS('Tuning')
+
+#MaxEnt modelling ####
+me_list<-list()
+#for(i in 1:4){
+for(i in 1:length(levels(as.factor(forestprodonlytype$species)))){
+  print(i)
+  print(levels(as.factor(forestprodonlytype$species))[[i]])
+  print(args_sp[[i]])
+  nrecs<-nrow(forestprodonlytype@coords[forestprodonlytype$species==levels(as.factor(forestprodonlytype$species))[[i]],])
+  print(nrecs)  
+  if(nrecs>=15){
+  me_list[[i]]<-maxent(p=forestprodonlytype@coords[forestprodonlytype$species==levels(as.factor(forestprodonlytype$species))[[i]],],
+            x=PredVars[[c(10,12,15,33,41,49,22,23)]],#Many NA values for forest type and productivity
             factors=c("Forest_Type","Forest_Productivity"),
-            a=backsp,
-            args=c('betamultiplier=2.0','threshold=TRUE','product=TRUE',"-P","-J"))
-me1
+            a=backforest,
+            args=args_sp[[i]],
+            path=paste0('MaxEnt/',levels(as.factor(forestprodonlytype$species))[[i]]))
+}}
+names(me_list)<-levels(as.factor(forestprodonlytype$species))
+
+
+#Predictions ####
+predictions<-list()
+#for(i in 1:4){
+for(i in 1:length(levels(as.factor(forestprodonlytype$species)))){
+  nrecs<-nrow(forestprodonlytype@coords[forestprodonlytype$species==levels(as.factor(forestprodonlytype$species))[[i]],])
+  print(nrecs)  
+  if(nrecs>=15){ predictions[[i]]<-predict(me_list[[i]],PredVars)
+} }
+names(predictions)<-levels(as.factor(forestprodonlytype$species))
+
+#Averaging predictions across multiple runs
+meanpredictions<-lapply(predictions,mean)
+levelplot(stack(meanpredictions[[c(1,4)]]),scales=list(draw=F))
