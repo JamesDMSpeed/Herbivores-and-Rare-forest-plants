@@ -281,6 +281,9 @@ rlfor_use<-rlforsp_utm[!is.na(rlforsp_utm$coordinateUncertaintyInMeters) & rlfor
 #Mask out points outside of Norway coverage (worldclim data)
 rlfor_useNor<-rlfor_use[!is.na(extract(PredVars[[10]],rlfor_use)),]
 
+#Points per species
+spNorwayGoodPrec<-with(rlfor_useNor@data,tapply(species,species,length))
+
 #Select points Only in forest land-cover
 extforest<-extract(PredVars$Land_Cover,rlfor_useNor)
 extforest[is.na(extforest)]<-0
@@ -305,10 +308,21 @@ spforprodocc<-with(forestprodonly@data,tapply(species,species,length))
 spforprodocc
 hist(spforprodocc)
 
-#Points per species - prodand type
+#Points per species - prod and type
 spforprodtypeocc<-with(forestprodonlytype@data,tapply(species,species,length))
 spforprodtypeocc
 hist(spforprodtypeocc)
+
+#Counts of all poitns per species in different type
+reccts<-as.data.frame(t(Reduce(function(...) merge(..., all=TRUE), list(t(as.data.frame(spNorwayGoodPrec)),
+                                                t(as.data.frame(spforocc)),
+                                                t(as.data.frame(spforprodocc)),
+                                                t(as.data.frame(spforprodtypeocc))))))
+                      
+colnames(reccts)<-c('Records with forest type and productivity','Records with forest productivity','Records in forest','Records with good precisicion within worldclim')
+reccts$Group<-rlfor_use$PlantGroup.x[match(rownames(reccts),rlfor_use$species)]
+write.csv(reccts[,5:1],'RecordCountsperSpecies.csv')
+
 
 #Points per higher taxa
 tapply(forestonly$PlantGroup.x,forestonly$PlantGroup.x,length)
