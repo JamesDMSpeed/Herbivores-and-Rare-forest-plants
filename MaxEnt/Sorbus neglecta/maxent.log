@@ -1,0 +1,39 @@
+Thu Jan 31 13:32:07 CET 2019
+MaxEnt version 3.3.3k
+Reading file absence
+readGrid: max memory 477626368, total allocated 186122240, free 149049384, used 37072856, increment -156349080
+Reading samples from presence
+Read samples: max memory 477626368, total allocated 186122240, free 152639928, used 33482312, increment -3590544
+Adding samples to background in feature space
+Command line used:  autorun -e MaxEnt/Sorbus neglecta/absence -o MaxEnt/Sorbus neglecta -s MaxEnt/Sorbus neglecta/presence -z
+Command line to repeat: java density.MaxEnt nowarnings noprefixes "outputdirectory=MaxEnt/Sorbus neglecta" "samplesfile=MaxEnt/Sorbus neglecta/presence" "environmentallayers=MaxEnt/Sorbus neglecta/absence" autorun novisible noprefixes -t Forest_Productivity -t Forest_Type
+Species: species
+Layers: Forest_Productivity Forest_Type bio10_16 bio12_16 bio15_16 moose2015 red_deer2015 roe_deer2015
+Layertypes: Categorical Categorical Continuous Continuous Continuous Continuous Continuous Continuous
+outputdirectory: MaxEnt/Sorbus neglecta
+samplesfile: MaxEnt/Sorbus neglecta/presence
+environmentallayers: MaxEnt/Sorbus neglecta/absence
+autorun: true
+visible: false
+prefixes: false
+
+getSamples: max memory 477626368, total allocated 186122240, free 152639928, used 33482312, increment 0
+Making features
+makeFeatures: max memory 477626368, total allocated 186122240, free 151951632, used 34170608, increment 688296
+species: 
+Regularization values: linear/quadratic/product: 1.000, categorical: 0.605, threshold: 1.970, hinge: 0.500
+3 samples
+Density: max memory 477626368, total allocated 186122240, free 151340608, used 34781632, increment 611024
+linearPredictor: max memory 477626368, total allocated 186122240, free 151340608, used 34781632, increment 0
+Deactivating (Forest_Productivity=11.0)
+Deactivating (Forest_Productivity=18.0)
+Deactivating (Forest_Type=32.0)
+Deactivating (Forest_Type=33.0)
+FeaturedSpace: max memory 477626368, total allocated 186122240, free 151340608, used 34781632, increment 0
+Sequential: max memory 477626368, total allocated 186122240, free 151340608, used 34781632, increment 0
+Initial loss: 8.31752199628717
+140: time = 0.135000 loss = 3.509535
+Resulting gain: 4.807987423848709
+Projecting...
+Writing file MaxEnt/Sorbus neglecta/species.csv
+Ending

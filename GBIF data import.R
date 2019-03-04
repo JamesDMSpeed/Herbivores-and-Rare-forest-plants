@@ -504,6 +504,37 @@ writeRaster(allspeciespredictions,'ModelPredictions/AllSpeciesPredictions.tif',f
 
 
 # Using sdm package ------------------------------------------------------
-ulmgla<-forestprodonlytype[forestprodonlytype@data$species=='Ulmus glabra',]@coords
-sdmdataset<-sdmData(ulmgla~roe_deer2015+bio1_16,train=ulmgla,predictors=PredVars)
+library(sdm)
+#InstallAll()#One time to install all dependent packages
 
+ulmgla<-forestprodonlytype[forestprodonlytype@data$species=='Ulmus glabra',]#@coords
+names(ulmgla)[1]<-'ulmgla'
+ulmgla<-cbind(ulmgla[,1],ulmgla@coords)
+ulmgla$ulmgla<-'ulmgla'#Problems with spaces in species names...
+
+#ulmgla<-data.frame(cbind(ulmgla=rep('ulmgla',times=nrow(ulmgla)),ulmgla))
+sdmdataset<-sdmData(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,train=ulmgla,predictors=PredVars,bg=list(n=1000,method='gRandom',remove=TRUE))
+sdmdataset
+plot(sdmdataset)
+
+mod1<-sdm(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,data=sdmdataset,
+          methods=c('glm','gam','gbm'),
+          replication=c('cv','boot'),cv.folds=5,n=10)
+
+mod1<-sdm(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,data=sdmdataset,
+          methods=c('gbm','tree','mda','fda'),replication=c('cv','boot'),cv.folds=5,n=10)
+roc(mod1)
+rcurve(mod1)
+getVarImp(mod1,1)# 1 model at a time
+
+#Make something to summarise across lots of models
+v<-array(data=NA,dim=c(5,3,10))#3 columns, 5 rows (variables), 10 rep models
+v
+for (i in 1:10){v[,,i]<-getVarImp(mod1,i)@varImportance}
+lapply(v,mean)
+
+#Ensemble model
+ensemble(mod1,newdata=PredVars,filename='testensemble',setting=list(method='weighted',stat='AUC'))
+r1<-raster('testensemble')
+levelplot(r1,main='Ulmus glabra',margin=F)+
+  layer(sp.points(ulmgla))
