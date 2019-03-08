@@ -505,7 +505,12 @@ writeRaster(allspeciespredictions,'ModelPredictions/AllSpeciesPredictions.tif',f
 
 # Using sdm package ------------------------------------------------------
 library(sdm)
+#https://onlinelibrary.wiley.com/doi/full/10.1111/ecog.01881
+
+sem<-function(x)sd(x,na.rm=T)/length(!is.na(x))
+
 #InstallAll()#One time to install all dependent packages
+#Testing
 
 ulmgla<-forestprodonlytype[forestprodonlytype@data$species=='Ulmus glabra',]#@coords
 names(ulmgla)[1]<-'ulmgla'
@@ -513,13 +518,14 @@ ulmgla<-cbind(ulmgla[,1],ulmgla@coords)
 ulmgla$ulmgla<-'ulmgla'#Problems with spaces in species names...
 
 #ulmgla<-data.frame(cbind(ulmgla=rep('ulmgla',times=nrow(ulmgla)),ulmgla))
-sdmdataset<-sdmData(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,train=ulmgla,predictors=PredVars,bg=list(n=1000,method='gRandom',remove=TRUE))
+sdmdataset<-sdmData(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,train=ulmgla,
+                    predictors=PredVars,bg=list(n=1000,method='gRandom',remove=TRUE))
 sdmdataset
 plot(sdmdataset)
 
 mod1<-sdm(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,data=sdmdataset,
-          methods=c('glm','gam','gbm'),
-          replication=c('cv','boot'),cv.folds=5,n=10)
+          methods=c('glm','gam','gbm','cart','fda','rf'),
+          replication=c('cv','boot'),cv.folds=5)
 
 mod1<-sdm(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,data=sdmdataset,
           methods=c('gbm','tree','mda','fda'),replication=c('cv','boot'),cv.folds=5,n=10)
@@ -527,14 +533,115 @@ roc(mod1)
 rcurve(mod1)
 getVarImp(mod1,1)# 1 model at a time
 
-#Make something to summarise across lots of models
-v<-array(data=NA,dim=c(5,3,10))#3 columns, 5 rows (variables), 10 rep models
-v
-for (i in 1:10){v[,,i]<-getVarImp(mod1,i)@varImportance}
-lapply(v,mean)
 
-#Ensemble model
-ensemble(mod1,newdata=PredVars,filename='testensemble',setting=list(method='weighted',stat='AUC'))
-r1<-raster('testensemble')
-levelplot(r1,main='Ulmus glabra',margin=F)+
-  layer(sp.points(ulmgla))
+# Making good dataframe ---------------------------------------------------
+
+listdf<-list()
+for (i in 1: length(levels(as.factor(forestprodonlytype$species)))){
+#  for (i in 1:3){
+  a<-forestprodonlytype[forestprodonlytype$species==levels(as.factor(forestprodonlytype$species))[i],]
+  b<-cbind(a[,1],a@coords)
+ # names(b)[1]<-levels(as.factor(forestprodonlytype$species))[i]
+  names(b)[1]<-'species'
+  listdf[[i]]<-b
+  }
+
+  
+sdmdataset<-sdmData(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,train=ulmgla,
+                      predictors=PredVars,bg=list(n=1000,method='gRandom',remove=TRUE))
+  
+s1<-sdmData(Ajuga_reptans~roe_deer2015,train = listdf[[1]],predictors = PredVars,
+            bg=list(n=1000,method='gRandom',remove=TRUE))
+
+slist<-list()
+for(i in 1:3){
+  #s[[i]]<-sdmData(paste(levels(as.factor(forestprodonlytype$species))[i])~
+  s[[1]]<-sdmData(species~
+                    roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,
+    train=listdf[[1]],
+    predictors=PredVars,bg=list(n=1000,method='gRandom',remove=TRUE))
+}
+
+
+AllSpp <- do.call("rbind", listdf)
+#Remove space from species name to avoid errors
+AllSpp$species<-sub(" ","_",AllSpp$species)
+
+#Make the sdm dataset with all species and relevent environmental variables (specifiy factors)
+#1000 random points in the forest area
+bg<-sampleRandom(PredVars$Forest_Productivity,1000,sp=T)
+
+sdmdataset<-sdmData(species~roe_deer2015+red_deer2015+moose2015
+                    +bio10_16+bio12_16+bio15_16+SoilpH
+                    +f(Forest_Type)+f(Forest_Productivity)
+                    ,train=AllSpp,predictors=PredVars,bg=list(n=1000,method='gRandom',remove=TRUE))
+sdmdataset
+
+#Model with all species concurrently 
+#All species with >=20 records in forest
+sdm_Allspp<-sdm( Ajuga_reptans               +Anastrophyllum_donnianum   
+                +Arnica_montana              +Asperugo_procumbens          
+                +Campanula_barbata           +Campanula_cervicaria        +Cetrelia_olivetorum        
+                +Cinna_latifolia             +Collema_curtisporum        
+                +Collema_occultatum          +Crepis_praemorsa            +Cypripedium_calceolus      
+                +Dactylorhiza_sambucina      +Epipogium_aphyllum          +Galium_sterneri            
+                +Gentianella_campestris      +Gyalecta_flotowii           +Gyalecta_truncigena        
+                +Gyalecta_ulmi               +Hackelia_deflexa            +Herbertus_stramineus        +Heterodermia_speciosa      
+                +Lithospermum_officinale     +Malus_sylvestris            +Menegazzia_subsimilis       +Menegazzia_terebrata       
+                +Opegrapha_vermicellifera    +Ophrys_insectifera          +Pectenia_cyanoloma         
+                +Phaeophyscia_kairamoi       +Physconia_detersa           +Pseudorchis_albida          +Ramalina_dilacerata        
+                +Ramalina_sinensis           +Ramboldia_subcinnabarina    +Rinodina_disjuncta          
+                +Schismatomma_graphidioides  +Scorzonera_humilis          +Sorbus_lancifolia           +Sorbus_subpinnata           +Staurolemma_omphalarioides  +Taxus_baccata              
+                +Thalictrum_minus            +Thalictrum_simplex          +Thelotrema_macrosporum                  
+                +Ulmus_glabra                +Vicia_cassubica                     
+          
+                ~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16+Forest_Type+Forest_Productivity+SoilpH,
+                data=sdmdataset,
+          methods=c('glm','gam','rf','gbm','mda','fda','brt'),
+          replication=c('cv'),cv.folds=5)
+
+saveRDS(sdm_Allspp,'SDM package/SDMAllSpecies')
+
+#Extract model evaluations
+#modeval<-cbind(sdm_Allspp@run.info,getEvaluation(sdm_Allspp))
+modeval<-merge(sdm_Allspp@run.info,getEvaluation(sdm_Allspp),by='modelID')
+write.csv(modeval,'SDM package/AllModels_Evaluation')
+
+with(modeval,tapply(AUC,list(species,method),mean))
+with(modeval,tapply(AUC,list(species,method),sd))
+
+#Extract variable importances
+varimplist<-list()
+for (i in 1:max(sdm_Allspp@run.info$modelID)){
+  ifelse(sdm_Allspp@run.info$success[i]==TRUE,
+         {varimplist[[i]]<-getVarImp(sdm_Allspp,id=i)@varImportance
+         varimplist[[i]]$species<-sdm_Allspp@run.info$species[i]
+         varimplist[[i]]$method<-sdm_Allspp@run.info$method[i]
+         varimplist[[i]]$repid<-sdm_Allspp@run.info$replicationID[i]}
+         ,print(paste('Model failiure run ',i)))
+}
+AllVarImp<-do.call('rbind',varimplist)
+write.csv(AllVarImp,'SDM package/AllModelsVariableImportance')
+#Plot
+varimpmean<-with(AllVarImp,tapply(corTest,list(variables,species),mean))
+varimpsem<-with(AllVarImp,tapply(corTest,list(variables,species),sem))
+par(mar=c(5,12,1,1))
+b1<-barplot(varimpmean,beside=T,horiz=T,las=1,legend.text=T)
+arrows(varimpmean+varimpsem,b1,varimpmean-varimpsem,b1,code=3,angle=90,length=0.05)
+
+#Response curves
+responsecurvelist<-list()
+for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
+responsecurvelist[[i]]<-rcurve(sdm_Allspp,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]]
+       ,mean=T,main=levels(as.factor(sdm_Allspp@run.info$species))[i])
+}
+responsecurvelist[[1]]
+#Ensemble models for each species
+ensemblelist<-list()
+for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
+  ensemblelist[[i]]<-ensemble(sdm_Allspp,newdata=PredVars,filename=paste('EnsemblePredictions/',levels(as.factor(sdm_Allspp@run.info$species))[i]),
+                              setting=list(method='weighted',stat='AUC',id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]]))
+}
+
+#Niches 
+niche(PredVars,ensemblelist[[1]],n=c('bio16_16','moose2015'))
