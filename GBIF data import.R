@@ -650,15 +650,19 @@ arrows(varimpmean+varimpsem,b1,varimpmean-varimpsem,b1,code=3,angle=90,length=0.
 
 #Response curves
 #GetResponseCruve function gives object that can be plotted rather than just plots
+#For some reason, does not work with rf, mda, fda
 responsecurvelist<-list()
 for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
-#for(i in 1:3){
   responsecurvelist[[i]]<-getResponseCurve(sdm_Allspp,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]
                                                                            &sdm_Allspp@run.info$method%in% c('glm','gam','brt')]
                                  ,mean=T,main=levels(as.factor(sdm_Allspp@run.info$species))[i])
 }
 
 responsecurvelist[[1]]
+
+saveRDS(responsecurvelist,'SDM package/ResponseCurvesobj')
+
+plot(responsecurvelist[[2]])
 
 
 #Ensemble models for each species
@@ -670,8 +674,10 @@ for(i in 1:2){
   ensemblelist[[i]]<-ensemble(sdm_Allspp,newdata=pv1,filename=paste0('EnsemblePredictions/',levels(as.factor(sdm_Allspp@run.info$species))[i]),
                               setting=list(method='weighted',stat='AUC'
                                            ,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]]
-                                           &sdm_Allspp@run.info$method%in% c('glm','gam','brt')))
+                                           &sdm_Allspp@run.info$method== c('glm')))
 }
+
+
 
 #Niches 
 niche(PredVars,ensemblelist[[1]],n=c('bio16_16','moose2015'))
