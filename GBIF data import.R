@@ -577,8 +577,11 @@ sdmdataset<-sdmData(species~roe_deer2015+red_deer2015+moose2015
                     ,train=AllSpp,predictors=PredVars,bg=list(n=1000,method='gRandom',remove=TRUE))
 sdmdataset
 
+
+# All speceis model -------------------------------------------------------
 #Model with all species concurrently 
 #All species with >=20 records in forest
+
 sdm_Allspp<-sdm( Ajuga_reptans               +Anastrophyllum_donnianum   
                 +Arnica_montana              +Asperugo_procumbens          
                 +Campanula_barbata           +Campanula_cervicaria        +Cetrelia_olivetorum        
@@ -601,46 +604,73 @@ sdm_Allspp<-sdm( Ajuga_reptans               +Anastrophyllum_donnianum
           replication=c('cv'),cv.folds=5)
 
 saveRDS(sdm_Allspp,'SDM package/SDMAllSpecies')
+sdm_Allspp@run.info
+
 
 #Extract model evaluations
 #modeval<-cbind(sdm_Allspp@run.info,getEvaluation(sdm_Allspp))
 modeval<-merge(sdm_Allspp@run.info,getEvaluation(sdm_Allspp),by='modelID')
-write.csv(modeval,'SDM package/AllModels_Evaluation')
+modeval
+write.csv(modeval,'SDM package/AllModels_Evaluation.csv')
 
-with(modeval,tapply(AUC,list(species,method),mean))
-with(modeval,tapply(AUC,list(species,method),sd))
+aucmean<-with(modeval,tapply(AUC,list(method,species),mean))
+aucsd<-with(modeval,tapply(AUC,list(method,species),sd))
+barplot(aucmean,beside=T)
 
 #Extract variable importances
 varimplist<-list()
+
+#Null Df for models where variable importance not extracted
+df1<-getVarImp(sdm_Allspp,id=i)@varImportance
+df1$corTest<-NA
+df1$AUCtest<-NA
+
 for (i in 1:max(sdm_Allspp@run.info$modelID)){
-  ifelse(sdm_Allspp@run.info$success[i]==TRUE,
-         {varimplist[[i]]<-getVarImp(sdm_Allspp,id=i)@varImportance
+    ifelse(sdm_Allspp@run.info$success[i]==TRUE,
+           {
+           ifelse(!is.null(getVarImp(sdm_Allspp,id=i)),
+         varimplist[[i]]<-getVarImp(sdm_Allspp,id=i)@varImportance,
+         varimplist[[i]]<-df1)
          varimplist[[i]]$species<-sdm_Allspp@run.info$species[i]
          varimplist[[i]]$method<-sdm_Allspp@run.info$method[i]
          varimplist[[i]]$repid<-sdm_Allspp@run.info$replicationID[i]}
          ,print(paste('Model failiure run ',i)))
 }
+
 AllVarImp<-do.call('rbind',varimplist)
-write.csv(AllVarImp,'SDM package/AllModelsVariableImportance')
+AllVarImp
+write.csv(AllVarImp,'SDM package/AllModelsVariableImportance.csv')
+
 #Plot
-varimpmean<-with(AllVarImp,tapply(corTest,list(variables,species),mean))
-varimpsem<-with(AllVarImp,tapply(corTest,list(variables,species),sem))
+varimpmean<-with(AllVarImp,tapply(corTest,list(variables,species),mean,na.rm=T))
+varimpsem<-with(AllVarImp,tapply(corTest,list(variables,species),sem,na.rm=T))
 par(mar=c(5,12,1,1))
 b1<-barplot(varimpmean,beside=T,horiz=T,las=1,legend.text=T)
 arrows(varimpmean+varimpsem,b1,varimpmean-varimpsem,b1,code=3,angle=90,length=0.05)
 
 #Response curves
+#GetResponseCruve function gives object that can be plotted rather than just plots
 responsecurvelist<-list()
 for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
-responsecurvelist[[i]]<-rcurve(sdm_Allspp,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]]
-       ,mean=T,main=levels(as.factor(sdm_Allspp@run.info$species))[i])
+#for(i in 1:3){
+  responsecurvelist[[i]]<-getResponseCurve(sdm_Allspp,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]
+                                                                           &sdm_Allspp@run.info$method%in% c('glm','gam','brt')]
+                                 ,mean=T,main=levels(as.factor(sdm_Allspp@run.info$species))[i])
 }
+
 responsecurvelist[[1]]
+
+
 #Ensemble models for each species
 ensemblelist<-list()
-for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
-  ensemblelist[[i]]<-ensemble(sdm_Allspp,newdata=PredVars,filename=paste('EnsemblePredictions/',levels(as.factor(sdm_Allspp@run.info$species))[i]),
-                              setting=list(method='weighted',stat='AUC',id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]]))
+#for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
+pv1<-subset(PredVars,names(PredVars)[names(PredVars)%in%rownames(varimpmean)])
+#names(pv1)[names(pv1)=='Forest Productivity']<-'Forest_Productivity'
+for(i in 1:2){
+  ensemblelist[[i]]<-ensemble(sdm_Allspp,newdata=pv1,filename=paste0('EnsemblePredictions/',levels(as.factor(sdm_Allspp@run.info$species))[i]),
+                              setting=list(method='weighted',stat='AUC'
+                                           ,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]]
+                                           &sdm_Allspp@run.info$method%in% c('glm','gam','brt')))
 }
 
 #Niches 
