@@ -518,21 +518,23 @@ ulmgla<-cbind(ulmgla[,1],ulmgla@coords)
 ulmgla$ulmgla<-'ulmgla'#Problems with spaces in species names...
 
 #ulmgla<-data.frame(cbind(ulmgla=rep('ulmgla',times=nrow(ulmgla)),ulmgla))
-sdmdataset<-sdmData(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,train=ulmgla,
+sdmdatasetug<-sdmData(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16+f(Forest_Productivity),train=ulmgla,
                     predictors=PredVars,bg=list(n=1000,method='gRandom',remove=TRUE))
 sdmdataset
 plot(sdmdataset)
 
-mod1<-sdm(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,data=sdmdataset,
+mod1<-sdm(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16+Forest_Productivity,data=sdmdatasetug,
           methods=c('glm','gam','gbm','cart','fda','rf'),
-          replication=c('cv','boot'),cv.folds=5)
+          replication=c('cv'),cv.folds=5)
 
-mod1<-sdm(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,data=sdmdataset,
-          methods=c('gbm','tree','mda','fda'),replication=c('cv','boot'),cv.folds=5,n=10)
+#mod1<-sdm(ulmgla~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16,data=sdmdataset,
+#          methods=c('gbm','tree','mda','fda'),replication=c('cv','boot'),cv.folds=5,n=10)
+
 roc(mod1)
 rcurve(mod1)
 getVarImp(mod1,1)# 1 model at a time
 
+e1<-ensemble(mod1,pv1,setting=list(method='weighted',stat='AUC'))
 
 # Making good dataframe ---------------------------------------------------
 
@@ -667,16 +669,23 @@ plot(responsecurvelist[[2]])
 
 #Ensemble models for each species
 ensemblelist<-list()
-#for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
+
+#Need to remove attibute tables from factor variables to allow ensemble to work
 pv1<-subset(PredVars,names(PredVars)[names(PredVars)%in%rownames(varimpmean)])
-#names(pv1)[names(pv1)=='Forest Productivity']<-'Forest_Productivity'
-for(i in 1:2){
-  ensemblelist[[i]]<-ensemble(sdm_Allspp,newdata=pv1,filename=paste0('EnsemblePredictions/',levels(as.factor(sdm_Allspp@run.info$species))[i]),
+pv1$Forest_Productivity<-setValues(raster(pv1$Forest_Productivity),pv1$Forest_Productivity[])
+pv1$Forest_Type<-setValues(raster(pv1$Forest_Type),pv1$Forest_Type[])
+
+for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
+#for(i in 1:2){
+  ensemblelist[[i]]<-ensemble(sdm_Allspp,newdata=pv1,filename=paste0('SDM package/EnsemblePredictions/',levels(as.factor(sdm_Allspp@run.info$species))[i]),
                               setting=list(method='weighted',stat='AUC'
-                                           ,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]]
-                                           &sdm_Allspp@run.info$method== c('glm')))
+                                           ,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]]))
 }
 
+plot(ensemblelist[[1]],main=levels(as.factor(sdm_Allspp@run.info$species))[1])
+points(AllSpp[AllSpp$species==levels(as.factor(sdm_Allspp@run.info$species))[1],])
+plot(ensemblelist[[2]],main=levels(as.factor(sdm_Allspp@run.info$species))[2])
+points(AllSpp[AllSpp$species==levels(as.factor(sdm_Allspp@run.info$species))[2],])
 
 
 #Niches 
