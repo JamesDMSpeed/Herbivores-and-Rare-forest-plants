@@ -619,6 +619,20 @@ aucmean<-with(modeval,tapply(AUC,list(method,species),mean))
 aucsd<-with(modeval,tapply(AUC,list(method,species),sd))
 barplot(aucmean,beside=T)
 
+auc_spmethod<-matrix(paste(round(aucmean,3),round(aucsd,3),sep=' +/- '),dim(aucmean),dimnames = dimnames(aucmean))
+write.csv(auc_spmethod,'SDM package/AUC_SpeciesMethod.csv')
+
+aucmean
+aucgrandmean<-apply(aucmean,2,mean,na.rm=T)
+aucgrandsd<-apply(aucmean,2,sd,na.rm=T)
+
+auc_sp<-cbind(round(aucgrandmean,3),round(aucgrandsd,3))
+auc_sp
+write.csv(auc_sp,'SDM package/AUC_Species.csv')
+
+b1<-barplot(aucgrandmean)
+arrows(b1,aucgrandmean+aucgrandsd,b1,aucgrandmean-aucgrandsd,length=0.05,code=3,angle=90)
+
 #Extract variable importances
 varimplist<-list()
 
@@ -649,6 +663,10 @@ varimpsem<-with(AllVarImp,tapply(corTest,list(variables,species),sem,na.rm=T))
 par(mar=c(5,12,1,1))
 b1<-barplot(varimpmean,beside=T,horiz=T,las=1,legend.text=T)
 arrows(varimpmean+varimpsem,b1,varimpmean-varimpsem,b1,code=3,angle=90,length=0.05)
+
+varimpdata<-t(matrix(paste((round(varimpmean,3)),(round(varimpsem,3)),sep= ' +/- '),dim((varimpmean))
+       ,dimnames=dimnames(varimpmean)))
+write.csv(varimpdata,'SDM package/VariableImportance_species.csv')
 
 #Response curves
 #GetResponseCruve function gives object that can be plotted rather than just plots
