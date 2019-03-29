@@ -584,30 +584,28 @@ sdmdataset
 #Model with all species concurrently 
 #All species with >=20 records in forest
 
-sdm_Allspp<-sdm( Ajuga_reptans               +Anastrophyllum_donnianum   
-                +Arnica_montana              +Asperugo_procumbens          
-                +Campanula_barbata           +Campanula_cervicaria        +Cetrelia_olivetorum        
-                +Cinna_latifolia             +Collema_curtisporum        
-                +Collema_occultatum          +Crepis_praemorsa            +Cypripedium_calceolus      
-                +Dactylorhiza_sambucina      +Epipogium_aphyllum          +Galium_sterneri            
-                +Gentianella_campestris      +Gyalecta_flotowii           +Gyalecta_truncigena        
-                +Gyalecta_ulmi               +Hackelia_deflexa            +Herbertus_stramineus        +Heterodermia_speciosa      
-                +Lithospermum_officinale     +Malus_sylvestris            +Menegazzia_subsimilis       +Menegazzia_terebrata       
-                +Opegrapha_vermicellifera    +Ophrys_insectifera          +Pectenia_cyanoloma         
-                +Phaeophyscia_kairamoi       +Physconia_detersa           +Pseudorchis_albida          +Ramalina_dilacerata        
-                +Ramalina_sinensis           +Ramboldia_subcinnabarina    +Rinodina_disjuncta          
-                +Schismatomma_graphidioides  +Scorzonera_humilis          +Sorbus_lancifolia           +Sorbus_subpinnata           +Staurolemma_omphalarioides  +Taxus_baccata              
-                +Thalictrum_minus            +Thalictrum_simplex          +Thelotrema_macrosporum                  
-                +Ulmus_glabra                +Vicia_cassubica                     
-          
-                ~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16+Forest_Type+Forest_Productivity+SoilpH,
-                data=sdmdataset,
-          methods=c('glm','gam','rf','gbm','mda','fda','brt'),
-          replication=c('cv'),cv.folds=5)
-
-saveRDS(sdm_Allspp,'SDM package/SDMAllSpecies')
-sdm_Allspp@run.info
-
+# sdm_Allspp<-sdm( Ajuga_reptans               +Anastrophyllum_donnianum   
+#                 +Arnica_montana              +Asperugo_procumbens          
+#                 +Campanula_barbata           +Campanula_cervicaria        +Cetrelia_olivetorum        
+#                 +Cinna_latifolia             +Collema_curtisporum        
+#                 +Collema_occultatum          +Crepis_praemorsa            +Cypripedium_calceolus      
+#                 +Dactylorhiza_sambucina      +Epipogium_aphyllum          +Galium_sterneri            
+#                 +Gentianella_campestris      +Gyalecta_flotowii           +Gyalecta_truncigena        
+#                 +Gyalecta_ulmi               +Hackelia_deflexa            +Herbertus_stramineus        +Heterodermia_speciosa      
+#                 +Lithospermum_officinale     +Malus_sylvestris            +Menegazzia_subsimilis       +Menegazzia_terebrata       
+#                 +Opegrapha_vermicellifera    +Ophrys_insectifera          +Pectenia_cyanoloma         
+#                 +Phaeophyscia_kairamoi       +Physconia_detersa           +Pseudorchis_albida          +Ramalina_dilacerata        
+#                 +Ramalina_sinensis           +Ramboldia_subcinnabarina    +Rinodina_disjuncta          
+#                 +Schismatomma_graphidioides  +Scorzonera_humilis          +Sorbus_lancifolia           +Sorbus_subpinnata           +Staurolemma_omphalarioides  +Taxus_baccata              
+#                 +Thalictrum_minus            +Thalictrum_simplex          +Thelotrema_macrosporum                  
+#                 +Ulmus_glabra                +Vicia_cassubica                     
+#           
+#                 ~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16+Forest_Type+Forest_Productivity+SoilpH,
+#                 data=sdmdataset,
+#           methods=c('glm','gam','rf','gbm','mda','fda','brt'),
+#           replication=c('cv'),cv.folds=5)
+#saveRDS(sdm_Allspp,'SDM package/SDMAllSpecies')
+#sdm_Allspp@run.info
 
 #Extract model evaluations
 #modeval<-cbind(sdm_Allspp@run.info,getEvaluation(sdm_Allspp))
@@ -642,14 +640,14 @@ df1$corTest<-NA
 df1$AUCtest<-NA
 
 for (i in 1:max(sdm_Allspp@run.info$modelID)){
-    ifelse(sdm_Allspp@run.info$success[i]==TRUE,
-           {
+  ifelse(sdm_Allspp@run.info$success[i]==TRUE,
+         {
            ifelse(!is.null(getVarImp(sdm_Allspp,id=i)),
-         varimplist[[i]]<-getVarImp(sdm_Allspp,id=i)@varImportance,
-         varimplist[[i]]<-df1)
-         varimplist[[i]]$species<-sdm_Allspp@run.info$species[i]
-         varimplist[[i]]$method<-sdm_Allspp@run.info$method[i]
-         varimplist[[i]]$repid<-sdm_Allspp@run.info$replicationID[i]}
+                  varimplist[[i]]<-getVarImp(sdm_Allspp,id=i)@varImportance,
+                  varimplist[[i]]<-df1)
+           varimplist[[i]]$species<-sdm_Allspp@run.info$species[i]
+           varimplist[[i]]$method<-sdm_Allspp@run.info$method[i]
+           varimplist[[i]]$repid<-sdm_Allspp@run.info$replicationID[i]}
          ,print(paste('Model failiure run ',i)))
 }
 
@@ -665,7 +663,7 @@ b1<-barplot(varimpmean,beside=T,horiz=T,las=1,legend.text=T)
 arrows(varimpmean+varimpsem,b1,varimpmean-varimpsem,b1,code=3,angle=90,length=0.05)
 
 varimpdata<-t(matrix(paste((round(varimpmean,3)),(round(varimpsem,3)),sep= ' +/- '),dim((varimpmean))
-       ,dimnames=dimnames(varimpmean)))
+                     ,dimnames=dimnames(varimpmean)))
 write.csv(varimpdata,'SDM package/VariableImportance_species.csv')
 
 #Response curves
@@ -674,8 +672,8 @@ write.csv(varimpdata,'SDM package/VariableImportance_species.csv')
 responsecurvelist<-list()
 for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
   responsecurvelist[[i]]<-getResponseCurve(sdm_Allspp,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]
-                                                                           &sdm_Allspp@run.info$method%in% c('glm','gam','brt')]
-                                 ,mean=T,main=levels(as.factor(sdm_Allspp@run.info$species))[i])
+                                                                                     &sdm_Allspp@run.info$method%in% c('glm','gam','brt')]
+                                           ,mean=T,main=levels(as.factor(sdm_Allspp@run.info$species))[i])
 }
 
 responsecurvelist[[1]]
@@ -694,7 +692,7 @@ pv1$Forest_Productivity<-setValues(raster(pv1$Forest_Productivity),pv1$Forest_Pr
 pv1$Forest_Type<-setValues(raster(pv1$Forest_Type),pv1$Forest_Type[])
 
 for (i in 1:length(levels(as.factor(sdm_Allspp@run.info$species)))){
-#for(i in 1:2){
+  #for(i in 1:2){
   ensemblelist[[i]]<-ensemble(sdm_Allspp,newdata=pv1,filename=paste0('SDM package/EnsemblePredictions/',levels(as.factor(sdm_Allspp@run.info$species))[i]),
                               setting=list(method='weighted',stat='AUC'
                                            ,id=sdm_Allspp@run.info$modelID[sdm_Allspp@run.info$species==levels(as.factor(sdm_Allspp@run.info$species))[i]]))
@@ -708,3 +706,164 @@ points(AllSpp[AllSpp$species==levels(as.factor(sdm_Allspp@run.info$species))[2],
 
 #Niches 
 niche(PredVars,ensemblelist[[1]],n=c('bio16_16','moose2015'))
+
+#Forest spp over 20 recs
+
+sdm_Allspp_for20<-sdm(
+Ajuga_reptans
++Allium_scorodoprasum
++Anastrophyllum_donnianum
++Arnica_montana
++Asperugo_procumbens
++Campanula_barbata
++Campanula_cervicaria
++Cetrelia_olivetorum
++Cinna_latifolia
+#+Cladonia_callosa
+#+Cladonia_krogiana
++Collema_curtisporum
++Collema_occultatum
++Cotoneaster_laxiflorus
++Crepis_praemorsa
++Cypripedium_calceolus
++Dactylorhiza_sambucina
++Epipogium_aphyllum
+#Fissidens_exilis
++Galium_sterneri
++Gentianella_campestris
+#Gyalecta_derivata
++Gyalecta_flotowii
++Gyalecta_truncigena
++Gyalecta_ulmi
++Hackelia_deflexa
++Herbertus_stramineus
++Heterodermia_speciosa
++Lithospermum_officinale
++Malus_sylvestris
++Menegazzia_subsimilis
++Menegazzia_terebrata
++Opegrapha_vermicellifera
++Ophrys_insectifera
++Pectenia_cyanoloma
++Phaeophyscia_kairamoi
++Physconia_detersa
++Pseudorchis_albida
++Ramalina_dilacerata
++Ramalina_sinensis
++Ramboldia_subcinnabarina
++Rinodina_disjuncta
++Schismatomma_graphidioides
++Scorzonera_humilis
++Sorbus_lancifolia
++Sorbus_subpinnata
++Staurolemma_omphalarioides
++Taxus_baccata
++Thalictrum_minus
++Thalictrum_simplex
++Thelotrema_macrosporum
++Ulmus_glabra
++Vicia_cassubica
++Vicia_orobus
+~roe_deer2015+red_deer2015+moose2015+bio10_16+bio12_16+Forest_Type+Forest_Productivity+SoilpH,
+data=sdmdataset,
+methods=c('glm','gam','rf','gbm','mda','fda','brt'),
+replication=c('cv'),cv.folds=5)
+
+
+saveRDS(sdm_Allspp_for20,'SDM package/SDMAllSpecies_for20')
+sdm_Allspp_for20@run.info
+
+#Extract model evaluations
+#modeval<-cbind(sdm_Allspp@run.info,getEvaluation(sdm_Allspp))
+modeval_for20<-merge(sdm_Allspp_for20@run.info,getEvaluation(sdm_Allspp_for20),by='modelID')
+modeval_for20
+write.csv(modeval_for20,'SDM package/AllModels_Evaluation_for20.csv')
+
+aucmean_for20<-with(modeval_for20,tapply(AUC,list(method,species),mean))
+aucsd_for20<-with(modeval_for20,tapply(AUC,list(method,species),sd))
+barplot(aucmean_for20,beside=T)
+
+auc_spmethod_for20<-matrix(paste(round(aucmean_for20,3),round(aucsd_for20,3),sep=' +/- '),dim(aucmean_for20),dimnames = dimnames(aucmean_for20))
+write.csv(auc_spmethod,'SDM package/AUC_SpeciesMethod_for20.csv')
+
+aucmean_for20
+aucgrandmean_for20<-apply(aucmean_for20,2,mean,na.rm=T)
+aucgrandsd_for20<-apply(aucmean_for20,2,sd,na.rm=T)
+
+auc_sp_for20<-cbind(round(aucgrandmean_for20,3),round(aucgrandsd_for20,3))
+auc_sp
+write.csv(auc_sp,'SDM package/AUC_Species_for20.csv')
+
+par(mar=c(10,5,1,1))
+b1<-barplot(aucgrandmean_for20,ylim=c(0,1.1),las=2,ylab='AUC')
+arrows(b1,aucgrandmean_for20+aucgrandsd_for20,b1,aucgrandmean_for20-aucgrandsd_for20,length=0.05,code=3,angle=90)
+
+#Extract variable importances
+varimplist_for20<-list()
+
+#Null Df for models where variable importance not extracted
+df1_for20<-getVarImp(sdm_Allspp_for20,id=i)@varImportance
+df1_for20$corTest<-NA
+df1_for20$AUCtest<-NA
+
+for (i in 1:max(sdm_Allspp_for20@run.info$modelID)){
+  ifelse(sdm_Allspp_for20@run.info$success[i]==TRUE,
+         {
+           ifelse(!is.null(getVarImp(sdm_Allspp_for20,id=i)),
+                  varimplist_for20[[i]]<-getVarImp(sdm_Allspp_for20,id=i)@varImportance,
+                  varimplist_for20[[i]]<-df1)
+           varimplist_for20[[i]]$species<-sdm_Allspp_for20@run.info$species[i]
+           varimplist_for20[[i]]$method<-sdm_Allspp_for20@run.info$method[i]
+           varimplist_for20[[i]]$repid<-sdm_Allspp_for20@run.info$replicationID[i]}
+         ,print(paste('Model failiure run ',i)))
+}
+
+AllVarImp_for20<-do.call('rbind',varimplist_for20)
+AllVarImp_for20
+write.csv(AllVarImp_for20,'SDM package/AllModelsVariableImportance_for20.csv')
+
+#Plot
+varimpmean_for20<-with(AllVarImp_for20,tapply(corTest,list(variables,species),mean,na.rm=T))
+varimpsem_for20<-with(AllVarImp_for20,tapply(corTest,list(variables,species),sem))
+par(mar=c(5,12,1,1))
+b1<-barplot(varimpmean_for20,beside=T,horiz=T,las=1,legend.text=T)
+arrows(varimpmean_for20+varimpsem_for20,b1,varimpmean_for20-varimpsem_for20,b1,code=3,angle=90,length=0.05)
+
+varimpdata_for20<-t(matrix(paste((round(varimpmean_for20,3)),(round(varimpsem_for20,3)),sep= ' +/- '),dim((varimpmean_for20))
+                     ,dimnames=dimnames(varimpmean_for20)))
+write.csv(varimpdata_for20,'SDM package/VariableImportance_species_for20.csv')
+
+#Response curves
+#GetResponseCruve function gives object that can be plotted rather than just plots
+#For some reason, does not work with rf, mda, fda
+responsecurvelist_for20<-list()
+for (i in 1:length(levels(as.factor(sdm_Allspp_for20@run.info$species)))){
+  responsecurvelist_for20[[i]]<-getResponseCurve(sdm_Allspp_for20,id=sdm_Allspp_for20@run.info$modelID[sdm_Allspp_for20@run.info$species==levels(as.factor(sdm_Allspp_for20@run.info$species))[i]
+                                                                                     &sdm_Allspp_for20@run.info$method%in% c('glm','gam','brt')]
+                                           ,mean=T,main=levels(as.factor(sdm_Allspp_for20@run.info$species))[i])
+}
+
+responsecurvelist_for20[[1]]
+
+
+saveRDS(responsecurvelist_for20,'SDM package/ResponseCurvesobj_for20')
+
+plot(responsecurvelist_for20[[2]],main=levels(as.factor(sdm_Allspp_for20@run.info$species))[2])
+
+
+#Need to remove attibute tables from factor variables to allow ensemble to work
+pv1<-subset(PredVars,names(PredVars)[names(PredVars)%in%rownames(varimpmean)])
+pv1$Forest_Productivity<-setValues(raster(pv1$Forest_Productivity),pv1$Forest_Productivity[])
+pv1$Forest_Type<-setValues(raster(pv1$Forest_Type),pv1$Forest_Type[])
+ensemblelist_for20<-list()
+for (i in 1:length(levels(as.factor(sdm_Allspp_for20@run.info$species)))){
+#  for(i in 1:2){
+  ensemblelist_for20[[i]]<-ensemble(sdm_Allspp_for20,newdata=pv1,filename=paste0('SDM package/EnsemblePredictions_for20/',levels(as.factor(sdm_Allspp_for20@run.info$species))[i]),
+                              setting=list(method='weighted',stat='AUC'
+                                           ,id=sdm_Allspp_for20@run.info$modelID[sdm_Allspp_for20@run.info$species==levels(as.factor(sdm_Allspp_for20@run.info$species))[i]]))
+}
+
+plot(ensemblelist_for20[[1]],main=levels(as.factor(sdm_Allspp_for20@run.info$species))[1])
+points(AllSpp[AllSpp$species==levels(as.factor(sdm_Allspp_for20@run.info$species))[1],])
+plot(ensemblelist_for20[[2]],main=levels(as.factor(sdm_Allspp_for20@run.info$species))[2])
+points(AllSpp[AllSpp$species==levels(as.factor(sdm_Allspp_for20@run.info$species))[2],])
