@@ -833,6 +833,10 @@ varimpdata_for20<-t(matrix(paste((round(varimpmean_for20,3)),(round(varimpsem_fo
                      ,dimnames=dimnames(varimpmean_for20)))
 write.csv(varimpdata_for20,'SDM package/VariableImportance_species_for20.csv')
 
+#Set the order to plot spp (moss, lichen, vascular)
+spgroups<-read.csv('SppGroups.csv',sep=';')
+sporder<-(match(spgroups$Species,colnames(varimpmean_for20)))
+
 #Response curves
 #GetResponseCruve function gives object that can be plotted rather than just plots
 #For some reason, does not work with rf, mda, fda
@@ -845,16 +849,13 @@ for (i in 1:length(levels(as.factor(sdm_Allspp_for20@run.info$species)))){
 
 responsecurvelist_for20[[1]]
 
-#Set the order to plot spp (moss, lichen, vascular)
-spporder<-c()
-
 saveRDS(responsecurvelist_for20,'SDM package/ResponseCurvesobj_for20')
 
 plot(responsecurvelist_for20[[2]],main=levels(as.factor(sdm_Allspp_for20@run.info$species))[2])
 
 #Plotting response curves against moose density
 par(mfrow=c(5,10))
-for(i in 1:50){
+for(i in sporder){
   plot(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
      ,type='l',main=levels(modeval_for20$species)[i],xlab='Moose density',ylab='Response',las=1)
   lines(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
