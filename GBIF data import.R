@@ -576,7 +576,7 @@ bg<-sampleRandom(PredVars$Forest_Productivity,1000,sp=T)
 sdmdataset<-sdmData(species~roe_deer2015+red_deer2015+moose2015
                     +bio10_16+bio12_16+bio15_16+SoilpH
                     +f(Forest_Type)+f(Forest_Productivity)
-                    ,train=AllSpp,predictors=PredVars,bg=list(n=1000,method='gRandom',remove=TRUE))
+                    ,train=AllSpp,predictors=PredVars,bg=list(sample(backforest,1000),remove=T))
 sdmdataset
 
 
@@ -845,10 +845,24 @@ for (i in 1:length(levels(as.factor(sdm_Allspp_for20@run.info$species)))){
 
 responsecurvelist_for20[[1]]
 
+#Set the order to plot spp (moss, lichen, vascular)
+spporder<-c()
 
 saveRDS(responsecurvelist_for20,'SDM package/ResponseCurvesobj_for20')
 
 plot(responsecurvelist_for20[[2]],main=levels(as.factor(sdm_Allspp_for20@run.info$species))[2])
+
+#Plotting response curves against moose density
+par(mfrow=c(5,10))
+for(i in 1:50){
+  plot(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
+     ,type='l',main=levels(modeval_for20$species)[i],xlab='Moose density',ylab='Response',las=1)
+  lines(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
+        +apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,sem),lty=2)
+  lines(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
+      -apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,sem),lty=2)
+  }
+
 
 
 #Need to remove attibute tables from factor variables to allow ensemble to work
@@ -867,3 +881,5 @@ plot(ensemblelist_for20[[1]],main=levels(as.factor(sdm_Allspp_for20@run.info$spe
 points(AllSpp[AllSpp$species==levels(as.factor(sdm_Allspp_for20@run.info$species))[1],])
 plot(ensemblelist_for20[[2]],main=levels(as.factor(sdm_Allspp_for20@run.info$species))[2])
 points(AllSpp[AllSpp$species==levels(as.factor(sdm_Allspp_for20@run.info$species))[2],])
+
+
