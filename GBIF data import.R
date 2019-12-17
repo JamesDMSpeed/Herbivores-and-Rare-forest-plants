@@ -773,30 +773,66 @@ replication=c('cv'),cv.folds=5)
 saveRDS(sdm_Allspp_for20,'SDM package/SDMAllSpecies_for20')
 sdm_Allspp_for20@run.info
 
+# Figures -----------------------------------------------------------------
+
+#Set the order to plot spp (moss, lichen, vascular)
+spgroups<-read.csv('SppGroups.csv',sep=';')
+spgroups<-droplevels(spgroups[!spgroups$Species%in%c('Vicia_orobus','Allium_scorodoprasum','Cotoneaster_laxiflorus'),])
+levels(spgroups$Species)[(levels(spgroups$Species)%in%'Collema_occultatum')]<-"Rostania_occultata"
+levels(spgroups$Species)[(levels(spgroups$Species)%in%'Schismatomma_graphidioides')]<-"Schismatomma_pericleum"
+levels(spgroups$Species)[(levels(spgroups$Species)%in%'Hackelia_deflexa')]<-"Lappula deflexa"
+spgroups<-spgroups[order(spgroups$Group,spgroups$Species),]
 #Extract model evaluations
 #modeval<-cbind(sdm_Allspp@run.info,getEvaluation(sdm_Allspp))
 modeval_for20<-merge(sdm_Allspp_for20@run.info,getEvaluation(sdm_Allspp_for20),by='modelID')
-modeval_for20
+levels(modeval_for20$species)[(levels(modeval_for20$species)%in%'Collema_occultatum')]<-"Rostania_occultata"
+levels(modeval_for20$species)[(levels(modeval_for20$species)%in%'Schismatomma_graphidioides')]<-"Schismatomma_pericleum"
+levels(modeval_for20$species)[(levels(modeval_for20$species)%in%'Hackelia_deflexa')]<-"Lappula deflexa"
+
 write.csv(modeval_for20,'SDM package/AllModels_Evaluation_for20.csv')
 
 aucmean_for20<-with(modeval_for20,tapply(AUC,list(method,species),mean))
 aucsd_for20<-with(modeval_for20,tapply(AUC,list(method,species),sd))
 barplot(aucmean_for20,beside=T)
 
-auc_spmethod_for20<-matrix(paste(round(aucmean_for20,3),round(aucsd_for20,3),sep=' +/- '),dim(aucmean_for20),dimnames = dimnames(aucmean_for20))
-write.csv(auc_spmethod,'SDM package/AUC_SpeciesMethod_for20.csv')
+auc_spmethod_for20<-data.frame(t(matrix(paste(round(aucmean_for20,3),round(aucsd_for20,3),sep=' +/- '),dim(aucmean_for20),dimnames = dimnames(aucmean_for20))))
+auc_spmethod_for20$Species<-rownames(auc_spmethod_for20)
+auc_spmethod_for20<-merge(auc_spmethod_for20,spgroups,by.x='Species',by.y='Species')
+write.csv(auc_spmethod_for20,'SDM package/AUC_SpeciesMethod_for20.csv')
 
-aucmean_for20
+aucmean_for20<-aucmean_for20[,colnames(aucmean_for20)%in%spgroups$Species]
 aucgrandmean_for20<-apply(aucmean_for20,2,mean,na.rm=T)
 aucgrandsd_for20<-apply(aucmean_for20,2,sd,na.rm=T)
 
 auc_sp_for20<-cbind(round(aucgrandmean_for20,3),round(aucgrandsd_for20,3))
-auc_sp
-write.csv(auc_sp,'SDM package/AUC_Species_for20.csv')
+auc_sp_for20
+write.csv(auc_sp_for20,'SDM package/AUC_Species_for20.csv')
 
-par(mar=c(10,5,1,1))
-b1<-barplot(aucgrandmean_for20,ylim=c(0,1.1),las=2,ylab='AUC')
-arrows(b1,aucgrandmean_for20+aucgrandsd_for20,b1,aucgrandmean_for20-aucgrandsd_for20,length=0.05,code=3,angle=90)
+m1<-merge(spgroups,data.frame(species=names(aucgrandmean_for20),AUC=aucgrandmean_for20),by.x='Species',by.y='species')
+with(m1,tapply(aucgrandmean_for20,Group,mean))
+with(m1,tapply(aucgrandmean_for20,Group,sd))
+
+names(aucgrandmean_for20)<-sub("_", " ", names(aucgrandmean_for20))
+sporder<-match(sub("_", " ",vf3$spp),names(aucgrandmean_for20))
+sporder
+
+
+tiff('Figures/AUC.tif',width=1200,height=800,units='px',pointsize = 20)
+par(mar=c(11,5,3,1))
+par(xpd=T)
+b1<-barplot(aucgrandmean_for20[sporder],ylim=c(0,1.1),
+            las=2,cex.names=0.9,font=3,yaxt='n',
+            col=c(grey(0.2),grey(0.5),grey(0.8))[spgroups$Group])
+axis(2,las=1)
+title(ylab='AUC')
+arrows(b1,aucgrandmean_for20[sporder]+aucgrandsd_for20[sporder],b1,aucgrandmean_for20[sporder]-aucgrandsd_for20[sporder],length=0.05,code=3,angle=90)
+#abline(v=(b1[3]-b1[2])/2+b1[2],lty=2,lwd=2)
+#abline(v=(b1[23]-b1[22])/2+b1[22],lty=2,lwd=2)
+legend(45,1.25,fill=c(grey(0.2),grey(0.5),grey(0.8)),c('Bryophyte','Lichen','Vascular'),cex=0.9)
+#text(b1[1.5],1.1,'B')
+dev.off()
+
+summary(aucgrandmean_for20)
 
 #Extract variable importances
 varimplist_for20<-list()
@@ -820,6 +856,8 @@ for (i in 1:max(sdm_Allspp_for20@run.info$modelID)){
 
 AllVarImp_for20<-do.call('rbind',varimplist_for20)
 AllVarImp_for20
+
+AllVarImp_for20group<-merge(AllVarImp_for20)
 write.csv(AllVarImp_for20,'SDM package/AllModelsVariableImportance_for20.csv')
 
 #Plot
@@ -827,21 +865,109 @@ varimpmean_for20<-with(AllVarImp_for20,tapply(corTest,list(variables,species),me
 varimpsem_for20<-with(AllVarImp_for20,tapply(corTest,list(variables,species),sem))
 par(mar=c(5,12,1,1))
 b1<-barplot(varimpmean_for20,beside=T,horiz=T,las=1,legend.text=T)
-arrows(varimpmean_for20+varimpsem_for20,b1,varimpmean_for20-varimpsem_for20,b1,code=3,angle=90,length=0.05)
+arrows(varimpmean_for20[sporder]+varimpsem_for20[sporder],b1,varimpmean_for20[sporder]-varimpsem_for20[sporder],b1,code=3,angle=90,length=0.05)
 
 varimpdata_for20<-t(matrix(paste((round(varimpmean_for20,3)),(round(varimpsem_for20,3)),sep= ' +/- '),dim((varimpmean_for20))
                      ,dimnames=dimnames(varimpmean_for20)))
-write.csv(varimpdata_for20,'SDM package/VariableImportance_species_for20.csv')
 
-#Set the order to plot spp (moss, lichen, vascular)
-spgroups<-read.csv('SppGroups.csv',sep=';')
-sporder<-(match(spgroups$Species,colnames(varimpmean_for20)))
+
+write.csv(varimpdata_for20,'SDM package/VariableImportance_species_for20.csv')
+vim1<-as.data.frame(varimpdata_for20)
+vim1$species<-rownames(varimpdata_for20)
+vimpgroup<-merge(vim1,spgroups,by.x='species',by.y='Species')
+write.csv(vimpgroup,'SDM package/VariableImportance_species_for20_Group.csv')
+
+#Fix spp names
+levels(AllVarImp_for20$species)%in% "Collema_occultatum" <-"Rostania_occultata"
+levels(AllVarImp_for20$species)%in% "Schismatomma_graphidioides"<-"Schismatomma_pericleum"
+levels(AllVarImp_for20$species)%in% "Hackelia_deflexa"<-"Lappula deflexa"
+
+
+#Ordering by spp groups
+vf1<-as.data.frame(t(varimpmean_for20))
+vf1$spp<-rownames(vf1)
+vf2<-merge(vf1,spgroups,by.x='spp',by.y='Species')
+vf2$spp[vf2$spp=='Collema_occultatum']<-"Rostania_occultata"
+vf2$spp[vf2$spp=='Schismatomma_graphidioides']<-"Schismatomma_pericleum"
+vf2$spp[vf2$spp=='Hackelia_deflexa']<-"Lappula deflexa"
+vf3<-vf2[order(vf2$Group,vf2$spp),]
+vfse1<-as.data.frame(t(varimpsem_for20))
+vfse1$spp<-rownames(vfse1)
+vfse2<-merge(vfse1,spgroups,by.x='spp',by.y='Species')
+vfse2$spp[vfse2$spp=='Collema_occultatum']<-"Rostania_occultata"
+vfse2$spp[vfse2$spp=='Schismatomma_graphidioides']<-"Schismatomma_pericleum"
+vfse2$spp[vfse2$spp=='Hackelia_deflexa']<-"Lappula deflexa"
+vfse3<-vfse2[order(vfse2$Group,vfse2$spp),]
+
+tiff('Figures/VarImp.tif',width=1200,height=800,units='px',pointsize = 20)
+par(mar=c(12,5,1,1))
+par(xpd=F)
+b1<-barplot(t(as.matrix(vf3[,6:8])),beside=T,cex.names=0.8,horiz=F,las=1,legend.text = T,
+            names.arg=sub("_"," ",vf3$spp),las=2,font=3,yaxt='n',ylim=c(0,0.67),
+            args.legend = list(legend=c('Moose', 'Red deer', 'Roe deer')))
+axis(2,las=1)
+title(ylab='Variable importance')
+arrows(b1,t(as.matrix(vf3[,6:8]))+t(as.matrix(vfse3[,6:8])),b1,t(as.matrix(vf3[,6:8]))-t(as.matrix(vfse3[,6:8])),code=3,length=0.05,angle=90)
+abline(v=(b1[2,3]-b1[2,2])/2+b1[2,2],lty=2,lwd=2)
+abline(v=(b1[2,23]-b1[2,22])/2+b1[2,22],lty=2,lwd=2)
+text(1,0.6,'B')
+text(50,0.6,'Lichens')
+text(130,0.6,'Vascular')
+#abline(h=1/6)
+dev.off()
+
+#Try as a two part figure
+tiff('Figures/VarImp2.tif',width=1200,height=1600,units='px',pointsize = 20)
+par(mfrow=c(2,1))
+par(mar=c(12,5,2,1))
+par(xpd=F)
+b1<-barplot(t(as.matrix(vf3[1:22,6:8])),beside=T,cex.names=0.8,horiz=F,las=1,legend.text = T,
+            names.arg=sub("_"," ",vf3$spp[1:22]),las=2,font=3,yaxt='n',ylim=c(0,0.67),
+            args.legend = list(legend=c('Moose', 'Red deer', 'Roe deer')))
+axis(2,las=1)
+title(ylab='Variable importance')
+title(main='Bryophytes and Lichens')
+arrows(b1,t(as.matrix(vf3[1:22,6:8]))+t(as.matrix(vfse3[1:22,6:8])),b1,t(as.matrix(vf3[1:22,6:8]))-t(as.matrix(vfse3[1:22,6:8])),code=3,length=0.05,angle=90)
+abline(v=(b1[2,3]-b1[2,2])/2+b1[2,2],lty=2,lwd=2)
+#text(1,0.6,'B')
+#text(50,0.6,'Lichens')
+
+b1<-barplot(t(as.matrix(vf3[23:47,6:8])),beside=T,cex.names=0.8,horiz=F,las=1,legend=F,
+            names.arg=sub("_"," ",vf3$spp[23:47]),las=2,font=3,yaxt='n',ylim=c(0,0.67))
+            #args.legend = list(legend=c('Moose', 'Red deer', 'Roe deer')))
+axis(2,las=1)
+title(ylab='Variable importance')
+title(main='Vascular plants')
+arrows(b1,t(as.matrix(vf3[23:47,6:8]))+t(as.matrix(vfse3[23:47,6:8])),b1,t(as.matrix(vf3[23:47,6:8]))-t(as.matrix(vfse3[23:47,6:8])),code=3,length=0.05,angle=90)
+dev.off()
+
+#Correlation figure
+tiff('Figures/VarImp_Corrs.tif',width=800,height=1200,units='px',pointsize = 20)
+par(mfrow=c(2,1))
+par(mar=c(10,5,1,1))
+#Average varimp across spp
+vf4<-vf3
+names(vf4)<-c('Species','MST','MAP','Forest productivity','Forest type','Moose biomass','Red deer biomass','Roe deer biomass', 'Soil pH','Group')
+par(cex=0.8)
+boxplot(vf4[,2:9],las=2,cex=0.8,ylab='Variable importance')
+points(1:8,apply(vf4[,2:9],2,mean),pch=3)
+mtext('a',side=3,adj=-0.14)
+
+#Correlation between variable importances
+#plot(vf3$moose2015,vf3$red_deer2015)
+#points(vf3$moose2015,vf3$roe_deer2015,pch=16)
+corrs <- cor(vf4[,2:9])
+corrplot(corrs, type = "upper",diag=F, tl.col = "black", tl.srt = 45)
+mtext('b',side=3,adj=0)
+dev.off()
+
 
 #Response curves
 #GetResponseCruve function gives object that can be plotted rather than just plots
 #For some reason, does not work with rf, mda, fda
 responsecurvelist_for20<-list()
 for (i in 1:length(levels(as.factor(sdm_Allspp_for20@run.info$species)))){
+  print(i)
   responsecurvelist_for20[[i]]<-getResponseCurve(sdm_Allspp_for20,id=sdm_Allspp_for20@run.info$modelID[sdm_Allspp_for20@run.info$species==levels(as.factor(sdm_Allspp_for20@run.info$species))[i]
                                                                                      &sdm_Allspp_for20@run.info$method%in% c('glm','gam','brt')]
                                            ,mean=T,main=levels(as.factor(sdm_Allspp_for20@run.info$species))[i])
@@ -854,22 +980,118 @@ saveRDS(responsecurvelist_for20,'SDM package/ResponseCurvesobj_for20')
 plot(responsecurvelist_for20[[2]],main=levels(as.factor(sdm_Allspp_for20@run.info$species))[2])
 
 #Plotting response curves against moose density
-par(mfrow=c(5,10))
+#par(mfrow=c(5,10))
 for(i in sporder){
+  print(i)
   plot(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
      ,type='l',main=levels(modeval_for20$species)[i],xlab='Moose density',ylab='Response',las=1)
   lines(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
         +apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,sem),lty=2)
   lines(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
       -apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,sem),lty=2)
+}
+
+
+#Plot response curves for species-herbivore combinations where VarImp herbivore >0.2
+tiff('Figures/RespCurces.tif',width=1600,height=1600,units='px',pointsize = 20)
+
+par(mfcol=c(7,3))
+par(mar = c(0, 4, 2, 0), oma = c(6, 3, 0.5, 0.5))
+par(tcl = -0.25)
+#Moose
+for(i in which(varimpmean_for20[5,]>0.25)[c(2:6,1)]){
+  print(i)
+  print(colnames(varimpmean_for20)[i])
+  plot(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
+       ,type='l',main=paste0(sub("_"," ",levels(modeval_for20$species)[i]),"\n (",round(varimpmean_for20[5,i],3),")"),xlab='',ylab='',las=1,cex.main=1,xaxt='n')
+  lines(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
+        +apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,sem),lty=2)
+  lines(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
+        -apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,sem),lty=2)
   }
+axis(1)
+mtext(side=2,'Response',outer=T)
+#Dummy plot to fill 'gap'
+plot(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
+     ,main="",xlab='',ylab='',las=1,cex.main=0.9,xaxt='n',type='n',axes=F)
+mtext(side=1,expression('Moose' ~(kg~km^{-2})),outer=T,at=0.15,padj=T,line=2)
+
+#Red deer
+for(i in which(varimpmean_for20[6,]>0.25)){
+  print(i)
+plot(responsecurvelist_for20[[i]]@response$red_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,mean)
+       ,type='l',main=paste0(sub("_"," ",levels(modeval_for20$species)[i]),"\n (",round(varimpmean_for20[6,i],3),")"),ylab='',las=1,cex.main=1,xaxt='n')
+  lines(responsecurvelist_for20[[i]]@response$red_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,mean)
+        +apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,sem),lty=2)
+  lines(responsecurvelist_for20[[i]]@response$red_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,mean)
+        -apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,sem),lty=2)
+}
+axis(1)
+mtext(side=1,expression('Red deer' ~(kg~km^{-2})),outer=T,at=0.52,padj=1,line=2)
+
+#Roe deer
+#par(mfrow=c(3,3))
+for(i in which(varimpmean_for20[7,]>0.25)[c(4,3,5:6)]){
+  print(i)
+  plot(responsecurvelist_for20[[i]]@response$roe_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$roe_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$roe_deer2015)],1,mean)
+       ,type='l',main=paste0(sub("_"," ",levels(modeval_for20$species)[i]),"\n (",round(varimpmean_for20[7,i],3),")"),xlab='',ylab='',las=1,cex.main=1,xaxt='n')
+  lines(responsecurvelist_for20[[i]]@response$roe_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$roe_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$roe_deer2015)],1,mean)
+        +apply(responsecurvelist_for20[[i]]@response$roe_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$roe_deer2015)],1,sem),lty=2)
+  lines(responsecurvelist_for20[[i]]@response$roe_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$roe_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$roe_deer2015)],1,mean)
+        -apply(responsecurvelist_for20[[i]]@response$roe_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$roe_deer2015)],1,sem),lty=2)
+}
+axis(1)
+#Dummy plot to fill 'gap'
+plot(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
+     ,main="",xlab='',ylab='',las=1,cex.main=0.9,xaxt='n',type='n',axes=F)
+mtext(side=1,expression('Roe deer' ~(kg~km^{-2})),outer=T,at=0.85,padj=1,line=2)
+dev.off()
 
 
 
 #Need to remove attibute tables from factor variables to allow ensemble to work
 pv1<-subset(PredVars,names(PredVars)[names(PredVars)%in%rownames(varimpmean)])
+pv1$SoilpH<-mask(pv1$SoilpH,pv1$bio10_16)
 pv1$Forest_Productivity<-setValues(raster(pv1$Forest_Productivity),pv1$Forest_Productivity[])
 pv1$Forest_Type<-setValues(raster(pv1$Forest_Type),pv1$Forest_Type[])
+
+#Plot env vars
+pvplot1<-levelplot(pv1$bio10_16/10,margin=F,main="Mean summer temperature",scales=list(draw=F),
+                   colorkey=list(title=expression(~degree~C)),par.settings='YlOrRdTheme')+
+  layer(sp.polygons(norwayP),col=grey(0.5))
+pvplot2<-levelplot(pv1$bio12_16,margin=F,main="Annual precipitation",scales=list(draw=F),
+                   colorkey=list(title='mm'),par.settings='RdBuTheme')+
+  layer(sp.polygons(norwayP),col=grey(0.5))
+pvplot3<-levelplot(pv1$SoilpH/10,margin=F,main="Soil pH",scales=list(draw=F),
+                   colorkey=list(title='pH'),par.settings='RdBuTheme')+
+  layer(sp.polygons(norwayP),col=grey(0.5))
+pvplot4<-levelplot(PredVars$Forest_Type,margin=F,main="Forest Type",scales=list(draw=F))+
+  layer(sp.polygons(norwayP),col=grey(0.5))
+pvplot5<-levelplot(PredVars$Forest_Productivity,margin=F,main="Forest Productivity",scales=list(draw=F))+
+  layer(sp.polygons(norwayP),col=grey(0.5))
+pvplot6<-levelplot(pv1$moose2015,margin=F,main="Moose metabolic biomass",scales=list(draw=F),
+                   colorkey=list(title=expression(~ kg~km^{-2}),space='right'),par.settings='YlOrRdTheme')+
+  layer(sp.polygons(norwayP),col=grey(0.5))
+pvplot7<-levelplot(pv1$red_deer2015,margin=F,main="Red deer density",scales=list(draw=F),
+                   colorkey=list(title=expression(~ kg~km^{-2}),space='right'),par.settings='YlOrRdTheme')+
+  layer(sp.polygons(norwayP),col=grey(0.5))
+pvplot8<-levelplot(pv1$roe_deer2015,margin=F,main="Roe deer density",scales=list(draw=F),
+                   colorkey=list(title=expression(~kg~km^{-2}),space='right'),par.settings='YlOrRdTheme')+
+  layer(sp.polygons(norwayP),col=grey(0.5))
+
+pvplot1
+pvplot2
+pvplot3
+pvplot4
+pvplot5
+pvplot6
+pvplot7
+pvplot8
+
+tiff('Figures/PredVars.tif',width=800,height=1200,units='px',pointsize = 20)
+grid.arrange(pvplot1,pvplot6,pvplot2,pvplot7,pvplot3,pvplot8,pvplot4,pvplot5,ncol=2)
+dev.off()
+
 ensemblelist_for20<-list()
 for (i in 1:length(levels(as.factor(sdm_Allspp_for20@run.info$species)))){
 #  for(i in 1:2){
@@ -883,4 +1105,157 @@ points(AllSpp[AllSpp$species==levels(as.factor(sdm_Allspp_for20@run.info$species
 plot(ensemblelist_for20[[2]],main=levels(as.factor(sdm_Allspp_for20@run.info$species))[2])
 points(AllSpp[AllSpp$species==levels(as.factor(sdm_Allspp_for20@run.info$species))[2],])
 
+#pv1949 Replace 2015 with 1949 data
+pv49<-pv1
+pv49$moose2015<-PredVars$moose1949
+pv49$red_deer2015 <-PredVars$red_deer1949
+pv49$roe_deer2015<-PredVars$roe_deer1949
 
+
+#Predictions from sdm
+#Average within method
+#Multiple spp
+
+#Selected spp
+selspp<-names(c(which(varimpmean_for20[5,]>0.25),which(varimpmean_for20[6,]>0.25),which(varimpmean_for20[7,]>0.25)[3:6]))
+selsppun<-unique(selspp)
+
+sppreds2015<-list()
+sppreds1949<-list()
+for(i in 1:length(selsppun)){
+  print(i)
+  sppreds2015[i]<-predict(sdm_Allspp_for20,pv1,filename=paste0('ModelPredictions/ModelPreds2015/sppreds2015_',selsppun[i]),
+                   species=selsppun[i],mean=T)
+  sppreds1949[i]<-predict(sdm_Allspp_for20,pv49,filename=paste0('ModelPredictions/ModelPreds1949/sppreds1949_',selsppun[i]),
+                   species=selsppun[i],mean=T)
+}
+
+
+#Averages across methods
+sppredictions2015<-lapply(sppreds2015,function(x)calc(x,mean))
+sppredictions1949<-lapply(sppreds1949,function(x)calc(x,mean))
+sppredictionsstack1949<-stack(sppredictions1949)
+names(sppredictionsstack1949)<-selsppun
+sppredictionsstack2015<-stack(sppredictions2015)
+names(sppredictionsstack2015)<-selsppun
+#Write
+writeRaster(sppredictionsstack1949,filename=paste0('ModelPredictions/SelSppPredAverages/1949/',names(sppredictionsstack1949)),format='GTiff', bylayer=TRUE)
+writeRaster(sppredictionsstack2015,filename=paste0('ModelPredictions/SelSppPredAverages/2015/',names(sppredictionsstack2015)),format='GTiff', bylayer=TRUE)
+
+#Change in range
+#Plot on diverging colour scale
+diverge0 <- function(p, ramp) {
+  # p: a trellis object resulting from rasterVis::levelplot
+  # ramp: the name of an RColorBrewer palette (as character), a character 
+  #       vector of colour names to interpolate, or a colorRampPalette.
+  require(RColorBrewer)
+  require(rasterVis)
+  if(length(ramp)==1 && is.character(ramp) && ramp %in% 
+     row.names(brewer.pal.info)) {
+    ramp <- suppressWarnings(colorRampPalette(brewer.pal(11, ramp)))
+  } else if(length(ramp) > 1 && is.character(ramp) && all(ramp %in% colors())) {
+    ramp <- colorRampPalette(ramp)
+  } else if(!is.function(ramp)) 
+    stop('ramp should be either the name of a RColorBrewer palette, ', 
+         'a vector of colours to be interpolated, or a colorRampPalette.')
+  rng <- range(p$legend[[1]]$args$key$at)
+  s <- seq(-max(abs(rng)), max(abs(rng)), len=1001)
+  i <- findInterval(rng[which.min(abs(rng))], s)
+  zlim <- switch(which.min(abs(rng)), `1`=i:(1000+1), `2`=1:(i+1))
+  p$legend[[1]]$args$key$at <- s[zlim]
+  p$par.settings$regions$col <- ramp(1000)[zlim[-length(zlim)]]
+  p
+}
+
+predchanges<-sppredictionsstack1949
+for(i in 1:nlayers(sppredictionsstack1949)){
+  predchanges[[i]]<-sppredictions2015[[i]]-sppredictions1949[[i]]}
+p1<-levelplot(predchanges,margin=F,scales=list(draw=F),names.attr=selsppun)
+BuRd<-colorRampPalette(BuRdTheme()$regions$col)
+diverge0(p1,BuRd)
+
+
+#Try with alternative breaks
+pc100<-predchanges*100
+rng <- range(cellStats(pc100, range))
+lim <- ceiling(log(abs(rng), 2))
+b <- sort(c(0, unique(unlist(mapply(function(x, y) y*2^(0:x), lim, sign(rng))))))
+b[1] <- rng[1]
+b[length(b)] <- rng[2]
+
+p.strip <- list(cex=0.5, lines=1,font=3)
+p <- levelplot(pc100, par.settings=BuRdTheme(), at=b, 
+                 colorkey=list(height=0.8, labels=list(at=b[c(1:4,8,12:16)], labels=round(b[c(1:4,8,12:16)], 0))),
+               names.attr=sub("_"," ",selsppun),scales=list(draw=F),par.strip.text=p.strip)
+p
+
+#Remove spp with too low n
+pc100<-pc100[[c(1:10,13:16)]]
+sppredictionsstack2015<-sppredictionsstack2015[[c(1:10,13:16)]]
+sppredictionsstack1949<-sppredictionsstack1949[[c(1:10,13:16)]]
+#Species data
+plotord<-c(7,2,8,3,9,12,4,5,10,6,1,11,13,14)
+listsppts<-list()
+for (i in plotord){
+  print(i)
+  listsppts[i]<-forestprodonlytype[forestprodonlytype$species%in%sub("_"," ",selsppun[i]),]}
+
+tiff('Figures/RangeChange.tif',width=297,height=210,units='mm',pointsize = 20,res=300)
+p.strip <- list(cex=0.7, lines=1,font=3)
+p <- levelplot(pc100[[plotord]], par.settings=BuRdTheme(), at=b, 
+               colorkey=list(height=0.6,title='Change in predictions\n (%)\n \n ', title.gpar = list(cex = 1), labels=list(at=b[c(1:4,8,12:16)], labels=round(b[c(1:4,8,12:16)], 0),cex=1)),
+               names.attr=sub("_"," ",selsppun[plotord]),scales=list(draw=F),par.strip.text=p.strip)+
+  layer(sp.polygons(norwayP,lwd=0.1))+
+  layer(sp.points(listsppts[[panel.number()]],pch=1,cex=0.5,col=1,alpha=0.8))
+p
+dev.off()
+
+tiff('Figures/Range2015.tif',width=297,height=210,units='mm',pointsize = 20,res=300)
+p.strip <- list(cex=0.7, lines=1,font=3)
+p <- levelplot(sppredictionsstack2015 [[plotord]]*100,par.settings=YlOrRdTheme(), 
+               colorkey=list(height=0.6,title='Prediction 2015\n (%)\n \n', title.gpar = list(cex = 1), cex=1),
+               names.attr=sub("_"," ",selsppun[plotord]),scales=list(draw=F),par.strip.text=p.strip)+
+  layer(sp.polygons(norwayP,lwd=0.1))+
+  layer(sp.points(listsppts[[panel.number()]],pch=1,cex=0.5,col=1,alpha=0.8))
+p
+dev.off()
+
+tiff('Figures/Range1949.tif',width=297,height=210,units='mm',pointsize = 20,res=300)
+p.strip <- list(cex=0.7, lines=1,font=3)
+p <- levelplot(sppredictionsstack1949[[plotord]]*100, par.settings=YlOrRdTheme(), 
+               colorkey=list(height=0.6,title='Prediction 1949\n (%)\n \n', title.gpar = list(cex = 1), cex=1),
+               names.attr=sub("_"," ",selsppun[plotord]),scales=list(draw=F),par.strip.text=p.strip)+
+  layer(sp.polygons(norwayP,lwd=0.1))+
+  layer(sp.points(listsppts[[panel.number()]],pch=1,cex=0.5,col=1,alpha=0.8))
+p
+dev.off()
+
+
+pvP<-pv1
+names(pvP)<-c('MST','MAP','Forest type','Forest Prod.','Soil pH','Moose biomass','Red deer biomass','Roe deer biomass')
+tiff('Figures/PredPairs.tif',width=1600,height=1000,units='px',pointsize = 20)
+pairs(pvP)
+dev.off()
+
+#Plot herbivore differences
+
+pdiffX<-levelplot(stack(pv1$moose2015-pv49$moose2015,pv1$red_deer2015-pv49$red_deer2015,pv1$roe_deer2015-pv49$roe_deer2015),names.attr=c('Moose','Red deer','Roe deer'),
+                  main='Change in metabolic biomass',colorkey=list(title=expression(~kg~km^{2})),scales=list(draw=F))+
+  layer(sp.polygons(norwayP))
+
+
+pvdiffM<-levelplot(pv1$moose2015-pv49$moose2015,margin=F,main="Moose",scales=list(draw=F),
+                   colorkey=list(title=expression(~kg~km^{-2}),space='right'))+
+    layer(sp.polygons(norwayP))
+#pvdiffM
+pvdiffRed<-levelplot(pv1$red_deer2015-pv49$red_deer2015,margin=F,main="Red deer",scales=list(draw=F),
+                   colorkey=list(title=expression(~kg~km^{-2}),space='right'))+
+  layer(sp.polygons(norwayP))
+pvdiffRoe<-levelplot(pv1$roe_deer2015-pv49$roe_deer2015,margin=F,main="Roe deer",scales=list(draw=F),
+                   colorkey=list(title=expression(~kg~km^{-2}),space='right'))+
+  layer(sp.polygons(norwayP))
+
+tiff('Figures/CervidDiff.tif',width=1200,height=500,units='px',pointsize=20)
+#diverge0(pdiffX,BuRd)
+grid.arrange(diverge0(pvdiffM,BuRd),diverge0(pvdiffRed,BuRd),diverge0(pvdiffRoe,BuRd),ncol=3)
+dev.off()
