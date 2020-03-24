@@ -7,6 +7,7 @@ require(data.table)#Reading in big tables
 require(rasterVis)#Visualising spatial data
 require(dismo)#Distribution modelling
 require(ENMeval)#Tuning maxent
+require(usdm)#VIFs
 
 #Norway polygon
 norway<-raster::getData('GADM', country='NOR', level=0)
@@ -991,50 +992,50 @@ for(i in sporder){
       -apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,sem),lty=2)
 }
 
-
+levels(modeval_for20$species)[levels(modeval_for20$species)=="Schismatomma_graphidioides"]<-"Schismatomma_pericleum"
 #Plot response curves for species-herbivore combinations where VarImp herbivore >0.2
 tiff('Figures/RespCurces.tif',width=1600,height=1600,units='px',pointsize = 20)
-
+tiff('Figures/RespCurces2.tif',width=1600,height=1600,units='px',pointsize = 20)
 par(mfcol=c(7,3))
-par(mar = c(0, 4, 2, 0), oma = c(6, 3, 0.5, 0.5))
+par(mar = c(0, 4, 3, 0), oma = c(6, 3, 0.5, 0.5))
 par(tcl = -0.25)
 #Moose
 for(i in which(varimpmean_for20[5,]>0.25)[c(2:6,1)]){
   print(i)
   print(colnames(varimpmean_for20)[i])
   plot(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
-       ,type='l',main=paste0(sub("_"," ",levels(modeval_for20$species)[i]),"\n (",round(varimpmean_for20[5,i],3),")"),xlab='',ylab='',las=1,cex.main=1,xaxt='n')
+       ,type='l',main=paste0(sub("_"," ",levels(modeval_for20$species)[i]),"\n (",round(varimpmean_for20[5,i],3),")"),xlab='',ylab='',las=1,cex.main=1.5,xaxt='n')
   lines(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
         +apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,sem),lty=2)
   lines(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
         -apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,sem),lty=2)
   }
-axis(1)
-mtext(side=2,'Response',outer=T)
+axis(1,cex=1.5)
+mtext(side=2,'Response',cex=1.5,outer=T)
 #Dummy plot to fill 'gap'
 plot(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
      ,main="",xlab='',ylab='',las=1,cex.main=0.9,xaxt='n',type='n',axes=F)
-mtext(side=1,expression('Moose' ~(kg~km^{-2})),outer=T,at=0.15,padj=T,line=2)
+mtext(side=1,expression('Moose' ~(kg~km^{-2})),outer=T,at=0.15,padj=T,line=2,cex=1.5)
 
 #Red deer
 for(i in which(varimpmean_for20[6,]>0.25)){
   print(i)
 plot(responsecurvelist_for20[[i]]@response$red_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,mean)
-       ,type='l',main=paste0(sub("_"," ",levels(modeval_for20$species)[i]),"\n (",round(varimpmean_for20[6,i],3),")"),ylab='',las=1,cex.main=1,xaxt='n')
+       ,type='l',main=paste0(sub("_"," ",levels(modeval_for20$species)[i]),"\n (",round(varimpmean_for20[6,i],3),")"),ylab='',las=1,cex.main=1.5,xaxt='n')
   lines(responsecurvelist_for20[[i]]@response$red_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,mean)
         +apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,sem),lty=2)
   lines(responsecurvelist_for20[[i]]@response$red_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,mean)
         -apply(responsecurvelist_for20[[i]]@response$red_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$red_deer2015)],1,sem),lty=2)
 }
 axis(1)
-mtext(side=1,expression('Red deer' ~(kg~km^{-2})),outer=T,at=0.52,padj=1,line=2)
+mtext(side=1,expression('Red deer' ~(kg~km^{-2})),outer=T,at=0.52,padj=1,line=2,cex=1.5)
 
 #Roe deer
 #par(mfrow=c(3,3))
 for(i in which(varimpmean_for20[7,]>0.25)[c(4,3,5:6)]){
   print(i)
   plot(responsecurvelist_for20[[i]]@response$roe_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$roe_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$roe_deer2015)],1,mean)
-       ,type='l',main=paste0(sub("_"," ",levels(modeval_for20$species)[i]),"\n (",round(varimpmean_for20[7,i],3),")"),xlab='',ylab='',las=1,cex.main=1,xaxt='n')
+       ,type='l',main=paste0(sub("_"," ",levels(modeval_for20$species)[i]),"\n (",round(varimpmean_for20[7,i],3),")"),xlab='',ylab='',las=1,cex.main=1.5,xaxt='n')
   lines(responsecurvelist_for20[[i]]@response$roe_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$roe_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$roe_deer2015)],1,mean)
         +apply(responsecurvelist_for20[[i]]@response$roe_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$roe_deer2015)],1,sem),lty=2)
   lines(responsecurvelist_for20[[i]]@response$roe_deer2015[,1],apply(responsecurvelist_for20[[i]]@response$roe_deer2015[,2:ncol(responsecurvelist_for20[[i]]@response$roe_deer2015)],1,mean)
@@ -1044,7 +1045,7 @@ axis(1)
 #Dummy plot to fill 'gap'
 plot(responsecurvelist_for20[[i]]@response$moose2015[,1],apply(responsecurvelist_for20[[i]]@response$moose2015[,2:ncol(responsecurvelist_for20[[i]]@response$moose2015)],1,mean)
      ,main="",xlab='',ylab='',las=1,cex.main=0.9,xaxt='n',type='n',axes=F)
-mtext(side=1,expression('Roe deer' ~(kg~km^{-2})),outer=T,at=0.85,padj=1,line=2)
+mtext(side=1,expression('Roe deer' ~(kg~km^{-2})),outer=T,at=0.85,padj=1,line=2,cex=1.5)
 dev.off()
 
 
@@ -1135,8 +1136,10 @@ for(i in 1:length(selsppun)){
 sppredictions2015<-lapply(sppreds2015,function(x)calc(x,mean))
 sppredictions1949<-lapply(sppreds1949,function(x)calc(x,mean))
 sppredictionsstack1949<-stack(sppredictions1949)
+sppredictionsstack1949<-sppredictionsstack1949[[c(1:10,13:16)]]
 names(sppredictionsstack1949)<-selsppun
 sppredictionsstack2015<-stack(sppredictions2015)
+sppredictionsstack2015<-sppredictionsstack2015[[c(1:10,13:16)]]
 names(sppredictionsstack2015)<-selsppun
 #Write
 writeRaster(sppredictionsstack1949,filename=paste0('ModelPredictions/SelSppPredAverages/1949/',names(sppredictionsstack1949)),format='GTiff', bylayer=TRUE)
@@ -1191,17 +1194,19 @@ p
 
 #Remove spp with too low n
 pc100<-pc100[[c(1:10,13:16)]]
-sppredictionsstack2015<-sppredictionsstack2015[[c(1:10,13:16)]]
+
 sppredictionsstack1949<-sppredictionsstack1949[[c(1:10,13:16)]]
 #Species data
 plotord<-c(7,2,8,3,9,12,4,5,10,6,1,11,13,14)
 listsppts<-list()
+selsppunOrder<-selsppun[plotord]
 for (i in plotord){
   print(i)
-  listsppts[i]<-forestprodonlytype[forestprodonlytype$species%in%sub("_"," ",selsppun[i]),]}
+  listsppts[i]<-forestprodonlytype[forestprodonlytype$species%in%sub("_"," ",selsppunOrder[i]),]}
 
+selsppun[selsppun=="Schismatomma_graphidioides"]<-"Schismatomma_pericleum"
 tiff('Figures/RangeChange.tif',width=297,height=210,units='mm',pointsize = 20,res=300)
-p.strip <- list(cex=0.7, lines=1,font=3)
+p.strip <- list(cex=0.75, lines=1,font=3)
 p <- levelplot(pc100[[plotord]], par.settings=BuRdTheme(), at=b, 
                colorkey=list(height=0.6,title='Change in predictions\n (%)\n \n ', title.gpar = list(cex = 1), labels=list(at=b[c(1:4,8,12:16)], labels=round(b[c(1:4,8,12:16)], 0),cex=1)),
                names.attr=sub("_"," ",selsppun[plotord]),scales=list(draw=F),par.strip.text=p.strip)+
@@ -1211,8 +1216,8 @@ p
 dev.off()
 
 tiff('Figures/Range2015.tif',width=297,height=210,units='mm',pointsize = 20,res=300)
-p.strip <- list(cex=0.7, lines=1,font=3)
-p <- levelplot(sppredictionsstack2015 [[plotord]]*100,par.settings=YlOrRdTheme(), 
+p.strip <- list(cex=0.75, lines=1,font=3)
+p <- levelplot(sppredictionsstack2015[[plotord]]*100,par.settings=YlOrRdTheme(), 
                colorkey=list(height=0.6,title='Prediction 2015\n (%)\n \n', title.gpar = list(cex = 1), cex=1),
                names.attr=sub("_"," ",selsppun[plotord]),scales=list(draw=F),par.strip.text=p.strip)+
   layer(sp.polygons(norwayP,lwd=0.1))+
@@ -1221,7 +1226,7 @@ p
 dev.off()
 
 tiff('Figures/Range1949.tif',width=297,height=210,units='mm',pointsize = 20,res=300)
-p.strip <- list(cex=0.7, lines=1,font=3)
+p.strip <- list(cex=0.75, lines=1,font=3)
 p <- levelplot(sppredictionsstack1949[[plotord]]*100, par.settings=YlOrRdTheme(), 
                colorkey=list(height=0.6,title='Prediction 1949\n (%)\n \n', title.gpar = list(cex = 1), cex=1),
                names.attr=sub("_"," ",selsppun[plotord]),scales=list(draw=F),par.strip.text=p.strip)+
@@ -1259,3 +1264,28 @@ tiff('Figures/CervidDiff.tif',width=1200,height=500,units='px',pointsize=20)
 #diverge0(pdiffX,BuRd)
 grid.arrange(diverge0(pvdiffM,BuRd),diverge0(pvdiffRed,BuRd),diverge0(pvdiffRoe,BuRd),ncol=3)
 dev.off()
+
+
+#Range changes as KMZ
+pc100[[plotord]]
+rangechangesp<-stack(pc100[[plotord]])
+names(rangechangesp)<-sub("_"," ",selsppun[plotord])
+rangechangespLL<-projectRaster(rangechangesp,crs=crs(norway))
+p <- levelplot(pc100, par.settings=BuRdTheme(), at=b, 
+               colorkey=list(height=0.8, labels=list(at=b[c(1:4,8,12:16)], labels=round(b[c(1:4,8,12:16)], 0))),
+               names.attr=sub("_"," ",selsppun),scales=list(draw=F),par.strip.text=p.strip)
+
+KML(rangechangespLL,'HabitatSuitabilityChange',col=rev(brewer.pal(11,'RdBu')),overwrite=T)
+
+KML(rangechangespLL,'HabitatSuitabilityChange',col=p$par.settings$regions$col,overwrite=T)
+
+KML(projectRaster(sppredictionsstack2015[[c(1:10,13:16)]][[plotord]]*100,crs=crs(norway)),'Predictions2015',col=brewer.pal(9, 'YlOrRd'),overwrite=T)
+KML(projectRaster(sppredictionsstack1949[[c(1:10,13:16)]][[plotord]]*100,crs=crs(norway)),'Predictions1949',col=brewer.pal(9, 'YlOrRd'),overwrite=T)
+
+
+kml(rangechangespLL[[1]],file='HabSuitChange')
+
+
+#VIF
+vif(cbind(sdmdataset@features[c(2:6,8)],cbind(as.numeric(sdmdataset@features$Forest_Type),as.numeric(sdmdataset@features$Forest_Productivity))))
+vif(as.numeric(sdmdataset@features))
